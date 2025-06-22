@@ -1,7 +1,6 @@
-# extract.py
-
 import pdfplumber
 import json
+import re
 from openai import OpenAI
 
 openai = OpenAI()
@@ -85,7 +84,14 @@ Section 7c Legal Expenses Contribution"""
         messages=messages,
         temperature=0
     )
-    return response.choices[0].message.content.strip()
+    content = response.choices[0].message.content.strip()
+
+    # Remove ```json ... ``` or ``` ... ``` wrappers if present
+    match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
+    if match:
+        content = match.group(1).strip()
+
+    return content
 
 def process_pdf(input_path, output_path):
     text = extract_text_from_pdf(input_path)
