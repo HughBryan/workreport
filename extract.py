@@ -1,6 +1,7 @@
 import pdfplumber
 import json
 import re
+import os
 from openai import OpenAI
 
 openai = OpenAI()
@@ -90,11 +91,40 @@ Section 7c Legal Expenses Contribution"""
     match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
     if match:
         content = match.group(1).strip()
+    return json.loads(content)
 
-    return content
+def update_master_json(master, new):
+    # Update general_info
+    if "general_info" in new:
+        for k, v in new["general_info"].items():
+            if v not in ("", 0, None):
+                master["general_info"][k] = v
+    # Update the correct insurer in Quotes
+    if "Quotes" in new:
+        for insurer, info in new["Quotes"].items():
+            for field, value in info.items():
+                if isinstance(value, dict):
+                    for subfield, subvalue in value.items():
+                        if subvalue not in ("", 0, None):
+                            master["Quotes"][insurer][field][subfield] = subvalue
+                else:
+                    if value not in ("", 0, None):
+                        master["Quotes"][insurer][field] = value
 
+def process_folder(folder_path, output_path):
+    import copy
+    master = copy.deepcopy(schema_json)
+    for filename in os.listdir(folder_path):
+        if filename.lower().endswith('.pdf'):
+            text = extract_text_from_pdf(os.path.join(folder_path, filename))
+            quote_json = extract_quote_data(text)
+            update_master_json(master, quote_json)
+    with open(output_path, "w") as f:
+        json.dump(master, f, indent=2)
+
+# Optional: keep your single-file processor
 def process_pdf(input_path, output_path):
     text = extract_text_from_pdf(input_path)
     result = extract_quote_data(text)
     with open(output_path, 'w') as f:
-        f.write(result)
+        json.dump(result, f, indent=2)
