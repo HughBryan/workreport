@@ -7,13 +7,14 @@ class QuoteExtractorGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Insurance Quote Processor")
-        self.root.geometry("640x500")
-        self.root.configure(bg="#dbe5f1")  # Light blue/gray background
+        self.root.geometry("640x540")
+        self.root.configure(bg="#dbe5f1")
 
         self.quote_folder = ""
         self.output_folder = ""
         self.quote_count = 0
         self.broker_fee = 20  # Default to 20%
+        self.commission = 20  # Default to 10%
 
         self.setup_ui()
 
@@ -31,44 +32,45 @@ class QuoteExtractorGUI:
         )
         self.info_label.pack(padx=10, fill=tk.X)
 
-        # --- Broker Fee Section (slider + input box) ---
-        fee_frame = tk.Frame(self.root, bg="#dbe5f1")
-        fee_frame.pack(padx=10, pady=(0, 8), fill=tk.X)
-        tk.Label(
-            fee_frame, text="Broker Fee (%):",
-            bg="#dbe5f1", fg="#1f3b57", font=("Helvetica", 11)
-        ).pack(side=tk.LEFT)
+    # --- Fee and Commission Inline Frame ---
+        inline_frame = tk.Frame(self.root, bg="#dbe5f1")
+        inline_frame.pack(padx=10, pady=(0, 8), fill=tk.X)
 
+        # --- Broker Fee (inline) ---
+        tk.Label(inline_frame, text="Broker Fee (%):", bg="#dbe5f1", fg="#1f3b57", font=("Helvetica", 11)).pack(side=tk.LEFT)
         self.broker_fee_var = tk.IntVar(value=self.broker_fee)
-
-        # Entry box for fee
-        self.fee_entry = tk.Entry(fee_frame, width=5, font=("Helvetica", 11), justify='center')
+        self.fee_entry = tk.Entry(inline_frame, width=5, font=("Helvetica", 11), justify='center')
         self.fee_entry.pack(side=tk.LEFT, padx=(5, 3))
         self.fee_entry.insert(0, str(self.broker_fee))
         self.fee_entry.bind('<FocusOut>', self.entry_broker_fee_update)
         self.fee_entry.bind('<Return>', self.entry_broker_fee_update)
-
-        # Slider for fee
         self.fee_slider = tk.Scale(
-            fee_frame,
-            from_=0, to=100,
-            orient=tk.HORIZONTAL,
-            variable=self.broker_fee_var,
-            command=self.slider_broker_fee_update,
-            showvalue=0,
-            resolution=1,
-            length=200,
-            bg="#dbe5f1",
-            troughcolor="#b0c4de",
-            highlightthickness=0
+            inline_frame, from_=0, to=100, orient=tk.HORIZONTAL,
+            variable=self.broker_fee_var, command=self.slider_broker_fee_update,
+            showvalue=0, resolution=1, length=100,
+            bg="#dbe5f1", troughcolor="#b0c4de", highlightthickness=0
         )
-        self.fee_slider.pack(side=tk.LEFT, padx=(5,5))
+        self.fee_slider.pack(side=tk.LEFT, padx=(5, 8))
+        self.fee_label = tk.Label(inline_frame, text="%", bg="#dbe5f1", fg="#357ABD", font=("Helvetica", 11, "bold"))
+        self.fee_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        self.fee_label = tk.Label(
-            fee_frame, text="%",
-            bg="#dbe5f1", fg="#357ABD", font=("Helvetica", 11, "bold")
+        # --- Commission (inline) ---
+        tk.Label(inline_frame, text="Commission (%):", bg="#dbe5f1", fg="#1f3b57", font=("Helvetica", 11)).pack(side=tk.LEFT)
+        self.commission_var = tk.IntVar(value=self.commission)
+        self.comm_entry = tk.Entry(inline_frame, width=5, font=("Helvetica", 11), justify='center')
+        self.comm_entry.pack(side=tk.LEFT, padx=(5, 3))
+        self.comm_entry.insert(0, str(self.commission))
+        self.comm_entry.bind('<FocusOut>', self.entry_commission_update)
+        self.comm_entry.bind('<Return>', self.entry_commission_update)
+        self.comm_slider = tk.Scale(
+            inline_frame, from_=0, to=100, orient=tk.HORIZONTAL,
+            variable=self.commission_var, command=self.slider_commission_update,
+            showvalue=0, resolution=1, length=100,
+            bg="#dbe5f1", troughcolor="#b0c4de", highlightthickness=0
         )
-        self.fee_label.pack(side=tk.LEFT)
+        self.comm_slider.pack(side=tk.LEFT, padx=(5, 8))
+        self.comm_label = tk.Label(inline_frame, text="%", bg="#dbe5f1", fg="#357ABD", font=("Helvetica", 11, "bold"))
+        self.comm_label.pack(side=tk.LEFT)
 
         # --- Log Frame ---
         self.log_frame = tk.Frame(self.root, bg="#e7edf4", bd=2, relief=tk.GROOVE)
@@ -87,7 +89,6 @@ class QuoteExtractorGUI:
         # --- Button Frame ---
         button_frame = tk.Frame(self.root, bg="#dbe5f1")
         button_frame.pack(side=tk.BOTTOM, pady=10)
-
         tk.Button(
             button_frame, text="Select Quote Folder",
             command=self.select_quote_folder, width=20,
@@ -129,6 +130,26 @@ class QuoteExtractorGUI:
         self.fee_entry.delete(0, tk.END)
         self.fee_entry.insert(0, str(fee))
 
+    # --- Commission Sync Logic ---
+    def slider_commission_update(self, val=None):
+        self.commission = self.commission_var.get()
+        self.comm_entry.delete(0, tk.END)
+        self.comm_entry.insert(0, str(self.commission))
+
+    def entry_commission_update(self, event=None):
+        try:
+            comm = int(self.comm_entry.get())
+            if comm < 0:
+                comm = 0
+            elif comm > 100:
+                comm = 100
+        except ValueError:
+            comm = 10  # Reset to default on invalid
+        self.commission = comm
+        self.commission_var.set(comm)
+        self.comm_entry.delete(0, tk.END)
+        self.comm_entry.insert(0, str(comm))
+
     def log(self, message):
         self.log_text.config(state='normal')
         self.log_text.insert(tk.END, f"{message}\n")
@@ -159,7 +180,6 @@ class QuoteExtractorGUI:
         if not self.quote_folder:
             messagebox.showerror("Error", "Please select a quote folder first.")
             return
-
         if not self.output_folder:
             messagebox.showerror("Error", "Please select an output folder first.")
             return
@@ -168,10 +188,10 @@ class QuoteExtractorGUI:
         output_path = os.path.join(self.output_folder, "combined_quotes.json")
 
         try:
-            # Pass broker_fee if you want it in your extract/process code
+            # Pass broker_fee and commission to your extract/process code if needed
             process_folder(self.quote_folder, output_path)
             self.log(f"Extraction complete. JSON saved to: {output_path}")
-            self.log(f"Broker Fee used: {self.broker_fee}%")
+
         except Exception as e:
             self.log(f"Error during extraction: {e}")
 

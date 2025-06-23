@@ -1,0 +1,32 @@
+{"insurer_name": {
+      "insurer": "insurer_name",
+      "total": 0,
+      "base": 0,
+      "esl": 0,
+      "gst": 0,
+      "stamp": 0,
+      "underwriter_fee": 0,
+      "underwriter_fee_gst": 0,
+      "commission_without_gst": 0,
+      "comission_gst": 0,
+      "conditions_or_endorsements": "",
+      "features": {
+        "BSI": 0,
+        "Common Contents": "",
+        "Public Liability": 0,
+        "Office Bearers Liability": 0,
+        "Fidelity /Loss of funds": 0,
+        "Catastrophe": "Not Included",
+        "Temporary Accommodation / Loss of Rent": 0,
+        "Lot Owners Fixtures & Fittings": "Not Included",
+        "Paint & Wallpaper": "Not Included",
+        "Floating Floorboards": "Not Included",
+        "Flood": "Not Included",
+        "Machinery Breakdown": "Not Included",
+        "Voluntary Workers Comp.": "",
+        "Additional and extra benefits": "",
+        "Standard Excess/property excess": 0,
+        "Additional Excess(es)": ""
+      }
+    }
+}
