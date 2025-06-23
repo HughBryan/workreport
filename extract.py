@@ -6,8 +6,12 @@ from openai import OpenAI
 
 openai = OpenAI()
 
-with open("schema.json") as f:
-    schema_json = json.load(f)
+with open("main_schema.json") as f:
+    main_schema = json.load(f)
+
+with open("quote_schema.json") as f:
+    quote_schema = json.load(f)
+
 
 def extract_text_from_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
@@ -19,8 +23,16 @@ def extract_quote_data(text):
             "role": "system",
             "content": f"""You are an assistant that extracts structured insurance quote data from unstructured PDF text.
 
-Return the data in the following JSON structure:
-{json.dumps(schema_json)}
+For each quote I give you, I want you to follow the below quote-schema JSON configuration. We are going to fill out all the information in the below JSON with the information from the quote pdf I provide.
+{json.dumps(quote_schema)}
+
+Here is my current JSON file, it contains all the current information from previous quotes. I want you to update any of the general information, but once we have extracted all the data about our current quote, return the current JSON file, with the new quote information we have extracted. Return ONLY the updated JSON file.
+
+{json.dumps(main_schema)}
+
+
+ 
+You will be given insruance quotations from multiple insurers, including but not limited to: CHU, Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI, etc. 
 
 Guidelines:
 - If the quote doesn't mention a value, leave it blank or 0
@@ -102,8 +114,17 @@ def update_master_json(master, new):
     # Update the correct insurer in Quotes
     if "Quotes" in new:
         for insurer, info in new["Quotes"].items():
+            # If this insurer is not in master, add it
+            if insurer not in master["Quotes"]:
+                master["Quotes"][insurer] = info
+                continue  # Already added all info, skip to next insurer
+
+            # Otherwise update fields as before
             for field, value in info.items():
                 if isinstance(value, dict):
+                    if field not in master["Quotes"][insurer]:
+                        master["Quotes"][insurer][field] = value
+                        continue
                     for subfield, subvalue in value.items():
                         if subvalue not in ("", 0, None):
                             master["Quotes"][insurer][field][subfield] = subvalue
@@ -111,9 +132,10 @@ def update_master_json(master, new):
                     if value not in ("", 0, None):
                         master["Quotes"][insurer][field] = value
 
+
 def process_folder(folder_path, output_path):
     import copy
-    master = copy.deepcopy(schema_json)
+    master = copy.deepcopy(main_schema)
     for filename in os.listdir(folder_path):
         if filename.lower().endswith('.pdf'):
             text = extract_text_from_pdf(os.path.join(folder_path, filename))
