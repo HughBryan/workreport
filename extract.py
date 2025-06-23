@@ -32,7 +32,7 @@ Here is my current JSON file, it contains all the current information from previ
 
 
  
-You will be given insruance quotations from multiple insurers, including but not limited to: CHU, Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI, etc. 
+You will be given insruance quotations from multiple insurers, including but not limited to: CHU, Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI,  IIS (insurance investment solutions) etc. 
 
 Guidelines:
 - If the quote doesn't mention a value, leave it blank or 0
