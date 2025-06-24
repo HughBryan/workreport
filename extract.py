@@ -23,7 +23,13 @@ def extract_quote_data(text):
             "role": "system",
             "content": f"""You are an assistant that extracts structured insurance quote data from unstructured PDF text.
 
-For each quote I give you, I want you to follow the below quote-schema JSON configuration. We are going to fill out all the information in the below JSON with the information from the quote pdf I provide.
+For each quote I give you, I want you to follow the below quote-schema JSON configuration. We are going to fill out all the information in the below JSON with the information from the quote pdf I provide. Most values of the 'features' section are either a dollar amount, or "included" or "Not Included". Try to stick to that. 
+
+For common contents if its not specified, just say 'Included in BSI'.  
+
+Always use the 'Insurer Alternative value' for all features such as common contents.
+
+Paint & wallpaper is always "Included".
 {json.dumps(quote_schema)}
 
 Here is my current JSON file, it contains all the current information from previous quotes. I want you to update any of the general information, but once we have extracted all the data about our current quote, return the current JSON file, with the new quote information we have extracted. Return ONLY the updated JSON file.
@@ -32,7 +38,7 @@ Here is my current JSON file, it contains all the current information from previ
 
 
  
-You will be given insruance quotations from multiple insurers, including but not limited to: CHU, Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI,  IIS (insurance investment solutions) etc. Try use these names as the insurers name if they match.
+You will be given insruance quotations from multiple insurers, including but not limited to: CHU (also known as QBE), Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI,  IIS (insurance investment solutions) etc. Try use these names as the insurers name if they match.
 
 Guidelines:
 - If the quote doesn't mention a value, leave it blank or 0
