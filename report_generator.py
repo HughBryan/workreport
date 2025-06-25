@@ -27,7 +27,10 @@ def format_currency(value, decimals=2):
     except Exception:
         return str(value)
 
-def calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_without_gst):
+def calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_without_gst, fixed_broker_fee=0):
+    if fixed_broker_fee > 0:
+        return round(fixed_broker_fee, 2)
+
     try:
         commission_without_gst_val = float(commission_without_gst)
     except (ValueError, TypeError):
@@ -42,7 +45,8 @@ def calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_withou
     return round(base * (effective_broker_fee_pct / 100.0), 2)
 
 
-def enrich_insurer_quotes(quotes_dict, broker_fee_pct, commission_pct, associate_split=0):
+
+def enrich_insurer_quotes(quotes_dict, broker_fee_pct, commission_pct, associate_split=0, fixed_broker_fee=0):
     enriched = {}
     for insurer, quote in quotes_dict.items():
         base = float(quote.get("base", 0) or 0)
@@ -53,7 +57,7 @@ def enrich_insurer_quotes(quotes_dict, broker_fee_pct, commission_pct, associate
         except Exception:
             commission_without_gst_val = 0
 
-        broker_fee = calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_without_gst_val)
+        broker_fee = calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_without_gst_val, fixed_broker_fee)
         broker_gst = round(broker_fee * 0.1, 2)
         remuneration = round(commission_without_gst_val + broker_fee, 2)
         final_total = round(total + broker_fee + broker_gst, 2)
@@ -88,12 +92,12 @@ def find_recommended(enriched_quotes):
         return result
     return {}
 
-def flatten_data_for_replace(data, broker_fee_pct, commission_pct,strata_manager):
+def flatten_data_for_replace(data, broker_fee_pct, commission_pct, strata_manager, fixed_broker_fee=0):
     flat = {}
     for k, v in data.get("general_info", {}).items():
         flat[k] = v
     associate_split = data.get("associate_split", 0)
-    enriched_quotes = enrich_insurer_quotes(data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split)
+    enriched_quotes = enrich_insurer_quotes(data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     for insurer, insurer_data in enriched_quotes.items():
         for field, value in insurer_data.items():
             if not field.startswith("_"):
@@ -139,7 +143,7 @@ def ensure_landscape_section(doc):
     section.page_width = new_width
     section.page_height = new_height
 
-def insert_market_summary_table(doc, quotes, recommended_insurer):
+def insert_market_summary_table(doc, quotes, recommended_insurer, fixed_broker_fee=0):
     placeholder = "{{market_summary_table}}"
     insurers = [
         "Axis", "CHU", "Flex", "Hutch", "IIS", "Longitude", "QUS", "SCI", "SUU"
@@ -188,7 +192,7 @@ def insert_market_summary_table(doc, quotes, recommended_insurer):
                 premium = None
                 comment = "Insurer did not respond in time"
                 if data:
-                    enriched = enrich_insurer_quotes({insurer: data}, 20, 20)
+                    enriched = enrich_insurer_quotes({insurer: data}, 20, 20, 0, fixed_broker_fee)
                     premium = enriched[insurer].get("final_total")
                     comment = "Recommended" if insurer == recommended_insurer else ""
                 insurer_label = f"{insurer} – Underwritten by {underwriters.get(insurer, 'Unknown')}"
@@ -210,14 +214,14 @@ def insert_market_summary_table(doc, quotes, recommended_insurer):
 
 # Modified insert_comparison_table with landscape page width support
 
-def insert_comparison_table(doc, quotes):
+def insert_comparison_table(doc, quotes, fixed_broker_fee=0):
     ensure_landscape_section(doc)
     placeholder = "{{comparison_table}}"
     insurer_list = list(quotes.keys())
     first_features = next(iter(quotes.values())).get("features", {})
     feature_keys = list(first_features.keys())
 
-    enriched_quotes = enrich_insurer_quotes(quotes, 20, 20)
+    enriched_quotes = enrich_insurer_quotes(quotes, 20, 20, 0, fixed_broker_fee)
 
     feature_keys.insert(0, "Total Premium")  # Add row at the top
 
@@ -330,11 +334,11 @@ def insert_conditions_table(doc, quotes):
             parent.insert(idx, tbl._element)
             break
 
-def generate_report(template_path, output_path, data, broker_fee_pct, commission_pct, associate_split,strata_manager):
+def generate_report(template_path, output_path, data, broker_fee_pct, commission_pct, associate_split, strata_manager, fixed_broker_fee=0):
     doc = Document(template_path)
     data["associate_split"] = associate_split
     data["strata_manager"] = strata_manager
-    replace_dict = flatten_data_for_replace(data, broker_fee_pct, commission_pct,strata_manager)
+    replace_dict = flatten_data_for_replace(data, broker_fee_pct, commission_pct, strata_manager, fixed_broker_fee)
 
     for p in doc.paragraphs:
         for key, value in replace_dict.items():
@@ -348,12 +352,12 @@ def generate_report(template_path, output_path, data, broker_fee_pct, commission
                     if f"{{{{{key}}}}}" in cell.text:
                         cell.text = cell.text.replace(f"{{{{{key}}}}}", str(value))
 
-    enriched_quotes = enrich_insurer_quotes(data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split)
+    enriched_quotes = enrich_insurer_quotes(data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     recommended = find_recommended(enriched_quotes)
 
-    insert_comparison_table(doc, data.get("Quotes", {}))
+    insert_comparison_table(doc, data.get("Quotes", {}), fixed_broker_fee)
     insert_conditions_table(doc, data.get("Quotes", {}))
-    insert_market_summary_table(doc, data.get("Quotes", {}), recommended.get("insurer"))
+    insert_market_summary_table(doc, data.get("Quotes", {}), recommended.get("insurer"), fixed_broker_fee)
 
     doc.save(output_path)
 
@@ -362,8 +366,9 @@ if __name__ == "__main__":
     broker_fee_pct = 20
     commission_pct = 20
     associate_split = 20  # Default value for testing
+    fixed_broker_fee = 200
     strata_manager = "International Strata"
     template_path = "report_template.docx"
     output_path = "Clearlake Insurance Renewal Report 2025-2026.docx"
-    generate_report(template_path, output_path, json_data, broker_fee_pct, commission_pct, associate_split,strata_manager)
+    generate_report(template_path, output_path, json_data, broker_fee_pct, commission_pct, associate_split,strata_manager,fixed_broker_fee)
     print("Report generated:", output_path)
