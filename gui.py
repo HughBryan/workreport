@@ -79,31 +79,36 @@ class QuoteExtractorGUI:
                                         textvariable=self.fixed_fee_var, state='disabled')
         self.fixed_fee_entry.grid(row=1, column=4, padx=5)
 
+
         # Row 2: Associate Split
         row2 = tk.Frame(config_frame, bg="#dbe5f1")
         row2.pack(fill=tk.X, pady=5)
 
         tk.Label(row2, text="Associate Split (%):", bg="#dbe5f1", font=("Helvetica", 11)).pack(side=tk.LEFT)
-        self.associate_split_var = tk.IntVar(value=20)
-        self.broker_split_var = tk.IntVar(value=80)
 
-        self.assoc_entry = tk.Entry(row2, width=5, font=("Helvetica", 11), justify='center')
+        self.associate_split_var = tk.DoubleVar(value=20.00)
+        self.broker_split_var = tk.DoubleVar(value=80.00)
+
+        self.assoc_entry = tk.Entry(row2, width=7, font=("Helvetica", 11), justify='center')
         self.assoc_entry.pack(side=tk.LEFT, padx=(5, 3))
-        self.assoc_entry.insert(0, "20")
+        self.assoc_entry.insert(0, "20.00")
         self.assoc_entry.bind('<FocusOut>', self.entry_associate_split_update)
         self.assoc_entry.bind('<Return>', self.entry_associate_split_update)
 
         self.assoc_slider = tk.Scale(row2, from_=0, to=100, orient=tk.HORIZONTAL,
-                                     variable=self.associate_split_var, command=self.slider_associate_split_update,
-                                     showvalue=0, resolution=1, length=100,
-                                     bg="#dbe5f1", troughcolor="#b0c4de", highlightthickness=0)
+                                    resolution=0.1,
+                                    variable=self.associate_split_var, command=self.slider_associate_split_update,
+                                    showvalue=0, length=100,
+                                    bg="#dbe5f1", troughcolor="#b0c4de", highlightthickness=0)
         self.assoc_slider.pack(side=tk.LEFT, padx=(5, 8))
 
-        self.broker_entry = tk.Entry(row2, width=5, font=("Helvetica", 11), justify='center')
+        self.broker_entry = tk.Entry(row2, width=7, font=("Helvetica", 11), justify='center')
         self.broker_entry.pack(side=tk.LEFT, padx=(3, 5))
-        self.broker_entry.insert(0, "80")
+        self.broker_entry.insert(0, "80.00")
         self.broker_entry.configure(state='readonly')
+
         tk.Label(row2, text=": Broker Share (%)", bg="#dbe5f1", font=("Helvetica", 11)).pack(side=tk.LEFT)
+
 
         # Row 3: Strata Manager
         row3 = tk.Frame(config_frame, bg="#dbe5f1")
@@ -199,22 +204,22 @@ class QuoteExtractorGUI:
             self.broker_entry.config(state='readonly')
 
     def slider_associate_split_update(self, val=None):
-        val = self.associate_split_var.get()
-        broker_val = 100 - val
+        val = round(self.associate_split_var.get(), 2)
+        broker_val = round(100 - val, 2)
         self.assoc_entry.delete(0, tk.END)
-        self.assoc_entry.insert(0, str(val))
+        self.assoc_entry.insert(0, f"{val:.2f}")
         self.broker_entry.config(state='normal')
         self.broker_entry.delete(0, tk.END)
-        self.broker_entry.insert(0, str(broker_val))
+        self.broker_entry.insert(0, f"{broker_val:.2f}")
         self.broker_entry.config(state='readonly')
 
     def entry_associate_split_update(self, event=None):
         try:
-            val = int(self.assoc_entry.get())
-            if val < 0: val = 0
-            if val > 100: val = 100
+            val = round(float(self.assoc_entry.get()), 2)
+            if val < 0: val = 0.0
+            if val > 100: val = 100.0
         except ValueError:
-            val = 20
+            val = 20.0
         self.associate_split_var.set(val)
         self.slider_associate_split_update()
 
