@@ -30,21 +30,13 @@ def format_currency(value, decimals=2):
 def calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_without_gst, fixed_broker_fee=0):
     if fixed_broker_fee > 0:
         return round(fixed_broker_fee, 2)
-
     try:
         commission_without_gst_val = float(commission_without_gst)
     except (ValueError, TypeError):
         commission_without_gst_val = 0
-
-    # Calculate shortfall in commission
     commission_shortfall_pct = max(commission_pct - commission_without_gst_val / base * 100 if base else 0, 0)
-
-    # Add the shortfall to the broker fee
     effective_broker_fee_pct = broker_fee_pct + commission_shortfall_pct
-
     return round(base * (effective_broker_fee_pct / 100.0), 2)
-
-
 
 def enrich_insurer_quotes(quotes_dict, broker_fee_pct, commission_pct, associate_split=0, fixed_broker_fee=0):
     enriched = {}
@@ -56,15 +48,12 @@ def enrich_insurer_quotes(quotes_dict, broker_fee_pct, commission_pct, associate
             commission_without_gst_val = float(commission_without_gst)
         except Exception:
             commission_without_gst_val = 0
-
         broker_fee = calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_without_gst_val, fixed_broker_fee)
         broker_gst = round(broker_fee * 0.1, 2)
         remuneration = round(commission_without_gst_val + broker_fee, 2)
         final_total = round(total + broker_fee + broker_gst, 2)
-
         sm_remuneration = round(remuneration * (associate_split / 100), 2)
         broker_remuneration = round(remuneration - sm_remuneration, 2)
-
         enriched_quote = dict(quote)
         enriched_quote["broker_fee"] = broker_fee
         enriched_quote["broker_gst"] = broker_gst
@@ -74,7 +63,6 @@ def enrich_insurer_quotes(quotes_dict, broker_fee_pct, commission_pct, associate
         enriched_quote["final_total"] = final_total
         enriched_quote["_final_total_numeric"] = final_total
         enriched_quote["insurer"] = insurer
-
         enriched[insurer] = enriched_quote
     return enriched
 
@@ -143,7 +131,7 @@ def ensure_landscape_section(doc):
     section.page_width = new_width
     section.page_height = new_height
 
-def insert_market_summary_table(doc, quotes, recommended_insurer, fixed_broker_fee=0):
+def insert_market_summary_table(doc, quotes, recommended_insurer, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee=0):
     placeholder = "{{market_summary_table}}"
     insurers = [
         "Axis", "CHU", "Flex", "Hutch", "IIS", "Longitude", "QUS", "SCI", "SUU"
@@ -166,15 +154,12 @@ def insert_market_summary_table(doc, quotes, recommended_insurer, fixed_broker_f
             parent = p._element.getparent()
             idx = parent.index(p._element)
             parent.remove(p._element)
-
             tbl = doc.add_table(rows=1 + len(insurers), cols=3)
             tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
             tbl.autofit = True
-
             headers = ["Insurer / Underwriter", "Premium Payable", "Comment"]
             for col in range(3):
                 cell = tbl.cell(0, col)
-                
                 cell.text = headers[col]
                 set_cell_background(cell, "FFFFFF")
                 set_cell_bottom_border(cell)
@@ -185,22 +170,19 @@ def insert_market_summary_table(doc, quotes, recommended_insurer, fixed_broker_f
                         r.font.size = Pt(9)
                         r.font.name = "Futura Bk BT (Body)"
                         r.font.color.rgb = RGBColor(0, 0, 0)
-
             for row_idx, insurer in enumerate(insurers, 1):
                 color = "e9edf7" if row_idx % 2 == 1 else "FFFFFF"
                 data = quotes.get(insurer)
                 premium = None
                 comment = "Insurer did not respond in time"
                 if data:
-                    enriched = enrich_insurer_quotes({insurer: data}, 20, 20, 0, fixed_broker_fee)
+                    enriched = enrich_insurer_quotes({insurer: data}, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
                     premium = enriched[insurer].get("final_total")
                     comment = "Recommended" if insurer == recommended_insurer else ""
                 insurer_label = f"{insurer} – Underwritten by {underwriters.get(insurer, 'Unknown')}"
                 cells = [insurer_label, format_currency(premium) if premium else "", comment]
-
                 for col_idx, value in enumerate(cells):
                     cell = tbl.cell(row_idx, col_idx)
-                    
                     cell.text = value if value else ""
                     set_cell_background(cell, color)
                     for p in cell.paragraphs:
@@ -208,26 +190,21 @@ def insert_market_summary_table(doc, quotes, recommended_insurer, fixed_broker_f
                         for r in p.runs:
                             r.font.size = Pt(9)
                             r.font.name = "Futura Bk BT (Body)"
-
             parent.insert(idx, tbl._element)
             break
 
-# Modified insert_comparison_table with landscape page width support
-
-def insert_comparison_table(doc, quotes, fixed_broker_fee=0):
+def insert_comparison_table(doc, quotes, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee=0):
     ensure_landscape_section(doc)
     placeholder = "{{comparison_table}}"
     insurer_list = list(quotes.keys())
+    if not insurer_list:
+        return
     first_features = next(iter(quotes.values())).get("features", {})
     feature_keys = list(first_features.keys())
-
-    enriched_quotes = enrich_insurer_quotes(quotes, 20, 20, 0, fixed_broker_fee)
-
-    feature_keys.insert(0, "Total Premium")  # Add row at the top
-
+    enriched_quotes = enrich_insurer_quotes(quotes, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
+    feature_keys.insert(0, "Total Premium")
     total_cols = 1 + len(insurer_list)
     column_width = Inches(9.0 / total_cols)
-
     for i, p in enumerate(doc.paragraphs):
         if placeholder in p.text:
             parent = p._element.getparent()
@@ -236,7 +213,6 @@ def insert_comparison_table(doc, quotes, fixed_broker_fee=0):
             tbl = doc.add_table(rows=1 + len(feature_keys), cols=total_cols)
             tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
             tbl.autofit = True
-
             for col in range(total_cols):
                 cell = tbl.cell(0, col)
                 cell.width = column_width
@@ -250,7 +226,6 @@ def insert_comparison_table(doc, quotes, fixed_broker_fee=0):
                         r.font.size = Pt(11)
                         r.font.name = "Futura Bk BT"
                         r.font.color.rgb = RGBColor(0, 0, 0)
-
             for row_idx, key in enumerate(feature_keys, 1):
                 color = "e9edf7" if row_idx % 2 == 1 else "FFFFFF"
                 cell = tbl.cell(row_idx, 0)
@@ -263,7 +238,6 @@ def insert_comparison_table(doc, quotes, fixed_broker_fee=0):
                         r.font.bold = True
                         r.font.size = Pt(9)
                         r.font.name = "Futura Bk BT"
-
                 for col_idx, insurer in enumerate(insurer_list):
                     if key == "Total Premium":
                         val = enriched_quotes.get(insurer, {}).get("final_total", "-")
@@ -281,18 +255,14 @@ def insert_comparison_table(doc, quotes, fixed_broker_fee=0):
                         for r in p.runs:
                             r.font.size = Pt(9)
                             r.font.name = "Futura Bk BT"
-
             parent.insert(idx, tbl._element)
             break
-
-# Modified insert_conditions_table with landscape page width support
 
 def insert_conditions_table(doc, quotes):
     ensure_landscape_section(doc)
     placeholder = "{{conditions_table}}"
     total_cols = 2
     col_widths = [Inches(2.5), Inches(6.5)]
-
     for i, p in enumerate(doc.paragraphs):
         if placeholder in p.text:
             parent = p._element.getparent()
@@ -301,7 +271,6 @@ def insert_conditions_table(doc, quotes):
             tbl = doc.add_table(rows=1 + len(quotes), cols=total_cols)
             tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
             tbl.autofit = True
-
             headers = ["Insurer", "Conditions / Endorsements"]
             for col in range(total_cols):
                 cell = tbl.cell(0, col)
@@ -316,7 +285,6 @@ def insert_conditions_table(doc, quotes):
                         r.font.size = Pt(11)
                         r.font.name = "Futura Bk BT"
                         r.font.color.rgb = RGBColor(0, 0, 0)
-
             for row_idx, (insurer, quote) in enumerate(quotes.items(), 1):
                 color = "e9edf7" if row_idx % 2 == 1 else "FFFFFF"
                 values = [insurer, quote.get("conditions_or_endorsements", "-")]
@@ -330,7 +298,6 @@ def insert_conditions_table(doc, quotes):
                         for r in p.runs:
                             r.font.size = Pt(10)
                             r.font.name = "Futura Bk BT"
-
             parent.insert(idx, tbl._element)
             break
 
@@ -339,36 +306,19 @@ def generate_report(template_path, output_path, data, broker_fee_pct, commission
     data["associate_split"] = associate_split
     data["strata_manager"] = strata_manager
     replace_dict = flatten_data_for_replace(data, broker_fee_pct, commission_pct, strata_manager, fixed_broker_fee)
-
     for p in doc.paragraphs:
         for key, value in replace_dict.items():
             if f"{{{{{key}}}}}" in p.text:
                 p.text = p.text.replace(f"{{{{{key}}}}}", str(value))
-
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for key, value in replace_dict.items():
                     if f"{{{{{key}}}}}" in cell.text:
                         cell.text = cell.text.replace(f"{{{{{key}}}}}", str(value))
-
     enriched_quotes = enrich_insurer_quotes(data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     recommended = find_recommended(enriched_quotes)
-
-    insert_comparison_table(doc, data.get("Quotes", {}), fixed_broker_fee)
+    insert_comparison_table(doc, data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     insert_conditions_table(doc, data.get("Quotes", {}))
-    insert_market_summary_table(doc, data.get("Quotes", {}), recommended.get("insurer"), fixed_broker_fee)
-
+    insert_market_summary_table(doc, data.get("Quotes", {}), recommended.get("insurer"), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     doc.save(output_path)
-
-if __name__ == "__main__":
-    json_data = load_json("combined_quotes.json")
-    broker_fee_pct = 20
-    commission_pct = 20
-    associate_split = 20  # Default value for testing
-    fixed_broker_fee = 200
-    strata_manager = "International Strata"
-    template_path = "report_template.docx"
-    output_path = "Clearlake Insurance Renewal Report 2025-2026.docx"
-    generate_report(template_path, output_path, json_data, broker_fee_pct, commission_pct, associate_split,strata_manager,fixed_broker_fee)
-    print("Report generated:", output_path)

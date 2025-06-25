@@ -42,7 +42,7 @@ You will be given insruance quotations from multiple insurers, including but not
 
 Guidelines:
 - If the quote doesn't mention a value, leave it blank or 0
-- COPY THE SCHEMA's VALUE TYPES EXACTLY: if it is a blank string, your output for that entry must be a string. If it is a value PUT A VALUE.
+- COPY THE SCHEMA's VALUE TYPES EXACTLY: if it is a blank string, your output for that entry must be a string. If it is a value PUT A VALUE. For example, Voltunary worker is a 0 in the schema - indicating that it needs the exact value the insurer sets.
 - Extract excesses and limits if specified
 - Only return the completed JSON object
 

@@ -2,12 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import os
 from extract import process_folder
-
-import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
-import os
-from extract import process_folder
-
+from report_generator import load_json, generate_report
 
 class QuoteExtractorGUI:
     def __init__(self, root):
@@ -142,6 +137,42 @@ class QuoteExtractorGUI:
                   bg="#357ABD", fg="white").grid(row=1, column=1, padx=10, pady=5)
 
 
+    def generate_doc(self):
+        if not self.output_folder:
+            messagebox.showerror("Error", "Please select an output folder first.")
+            return
+
+        json_path = os.path.join(self.output_folder, "combined_quotes.json")
+        if not os.path.exists(json_path):
+            messagebox.showerror("Error", f"combined_quotes.json not found in {self.output_folder}.")
+            return
+
+        self.log("Generating Word report...")
+
+        try:
+            data = load_json(json_path)
+            broker_fee_pct = self.broker_fee_var.get()
+            commission_pct = self.commission_var.get()
+            associate_split = self.associate_split_var.get()
+            strata_manager = self.strata_manager_var.get() if self.strata_checkbox_var.get() else "None"
+            fixed_broker_fee = self.fixed_fee_var.get() if self.use_fixed_fee_var.get() else 0
+
+            template_path = "report_template.docx"
+            output_path = os.path.join(self.output_folder, "Clearlake Insurance Renewal Report 2025-2026.docx")
+
+            generate_report(
+                template_path, output_path, data, 
+                broker_fee_pct, commission_pct, 
+                associate_split, strata_manager, fixed_broker_fee
+            )
+            self.log(f"Report generated: {output_path}")
+            messagebox.showinfo("Success", f"Report generated:\n{output_path}")
+
+        except Exception as e:
+            self.log(f"Error generating report: {e}")
+            messagebox.showerror("Error", f"Failed to generate report:\n{e}")
+
+
     def toggle_strata_entry(self):
         if self.strata_checkbox_var.get():
             # Strata Manager is ticked: allow associate split input
@@ -274,11 +305,6 @@ class QuoteExtractorGUI:
         except Exception as e:
             self.log(f"Error during extraction: {e}")
 
-    def generate_doc(self):
-        if not self.output_folder:
-            messagebox.showerror("Error", "Please select an output folder first.")
-            return
-        self.log(f"Generate Word Doc clicked. (Functionality not yet implemented.)")
 
     def toggle_fixed_fee(self):
         if self.use_fixed_fee_var.get():
