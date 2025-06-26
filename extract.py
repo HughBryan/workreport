@@ -5,13 +5,16 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 import sys
+from datetime import datetime
+
+
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 openai = OpenAI()
 
 
-
 def resource_path(relative_path):
+
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
@@ -41,11 +44,7 @@ def extract_quote_data(text):
 
 For each quote I give you, I want you to follow the below quote-schema JSON configuration. We are going to fill out all the information in the below JSON with the information from the quote pdf I provide. Most values of the 'features' section are either a dollar amount, or "included" or "Not Included". Try to stick to that. 
 
-For common contents if its not specified, just say 'Included in BSI'.  
 
-Always use the 'Insurer Alternative value' for all features such as common contents.
-
-Paint & wallpaper is always "Included".
 {json.dumps(quote_schema)}
 
 Here is my current JSON file, it contains all the current information from previous quotes. I want you to update any of the general information, but once we have extracted all the data about our current quote, return the current JSON file, with the new quote information we have extracted. Return ONLY the updated JSON file.
@@ -61,6 +60,7 @@ Guidelines:
 - COPY THE SCHEMA's VALUE TYPES EXACTLY: if it is a blank string, your output for that entry must be a string. If it is a value PUT A VALUE. For example, Voltunary worker is a 0 in the schema - indicating that it needs the exact value the insurer sets.
 - Extract excesses and limits if specified
 - Only return the completed JSON object
+- IF there is a terrorism levy - add it to the base premium
 
 Important to know when extracting:
 - BSI is known as the building sum insured. It may also just be referred to as building. It is typically one of the first values. Should be in the hundreds of thousands / millions.
@@ -72,6 +72,11 @@ Important to know when extracting:
 - Some insurers such as Insurance Investment Solutions will have many excesses. It is important to get every excess. They may have excesses on property, liability, voluntary workers, equipment, office bearers, and government audit and legal expenses
 - Voluntary workers comp is also known as personal accident
 - Additional benefits is the same as Extra benefits or additional limits
+- For common contents if its not specified, just say 'Included in BSI'.  
+- Always use the 'Insurer Alternative value' for all features such as common contents.
+- Paint & wallpaper is always "Included".
+
+
 - FOR IIS in particular EXTRACT EVERY EXCESS (all the excesses you can expect are below)
 
 Property Claims
@@ -162,7 +167,9 @@ def process_folder(folder_path, output_path):
         if filename.lower().endswith('.pdf'):
             text = extract_text_from_pdf(os.path.join(folder_path, filename))
             quote_json = extract_quote_data(text)
+            print(filename,"has been completed")
             update_master_json(master, quote_json)
+    master["general_info"]["current_date"] = (datetime.now().strftime("%d/%m/%Y"))
     with open(output_path, "w") as f:
         json.dump(master, f, indent=2)
 
