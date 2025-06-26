@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import os
 from extract import process_folder
-from report_generator import load_json, generate_report
+from report_generator import load_json, generate_report,resource_path
 
 class QuoteExtractorGUI:
     def __init__(self, root):
@@ -162,7 +162,7 @@ class QuoteExtractorGUI:
             strata_manager = self.strata_manager_var.get() if self.strata_checkbox_var.get() else "None"
             fixed_broker_fee = self.fixed_fee_var.get() if self.use_fixed_fee_var.get() else 0
 
-            template_path = "report_template.docx"
+            template_path = resource_path("report_template.docx")
             output_path = os.path.join(self.output_folder, "Clearlake Insurance Renewal Report 2025-2026.docx")
 
             generate_report(

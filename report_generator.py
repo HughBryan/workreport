@@ -5,6 +5,7 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import json
+from extract import resource_path
 
 def load_json(json_path):
     with open(json_path, "r") as f:

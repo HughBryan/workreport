@@ -3,13 +3,29 @@ import json
 import re
 import os
 from openai import OpenAI
-
+from dotenv import load_dotenv
+import sys
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
 openai = OpenAI()
 
-with open("main_schema.json") as f:
+
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+with open(resource_path("main_schema.json")) as f:
     main_schema = json.load(f)
 
-with open("quote_schema.json") as f:
+with open(resource_path("quote_schema.json")) as f:
     quote_schema = json.load(f)
 
 
