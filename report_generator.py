@@ -134,7 +134,8 @@ def ensure_landscape_section(doc):
 
 def insert_market_summary_table(doc, quotes, recommended_insurer, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee=0):
     placeholder = "{{market_summary_table}}"
-    insurers = [
+    # This is the full master list of known insurers (for missing entries)
+    master_insurers = [
         "Axis", "CHU", "Flex", "Hutch", "IIS", "Longitude", "QUS", "SCI", "SUU"
     ]
     underwriters = {
@@ -148,6 +149,24 @@ def insert_market_summary_table(doc, quotes, recommended_insurer, broker_fee_pct
         "SCI": "Allianz Australia Insurance Limited",
         "SUU": "CGU Insurance Limited"
     }
+
+    # Gather all unique insurer keys: those present in the quotes + those in the master list
+    all_insurers = list({insurer for insurer in quotes} | set(master_insurers))
+
+    # Prepare data for table rows
+    row_data = []
+    for insurer in all_insurers:
+        data = quotes.get(insurer)
+        if data:
+            enriched = enrich_insurer_quotes({insurer: data}, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
+            premium = enriched[insurer].get("final_total")
+            comment = "Recommended" if insurer == recommended_insurer else ""
+        else:
+            premium = None
+            comment = "Insurer did not respond in time"
+        insurer_label = f"{insurer} – Underwritten by {underwriters.get(insurer, 'Unknown')}"
+        row_data.append((insurer_label, format_currency(premium) if premium else "", comment))
+
     col_widths = [Inches(2.5), Inches(2.0), Inches(2.5)]
 
     for i, p in enumerate(doc.paragraphs):
@@ -155,9 +174,11 @@ def insert_market_summary_table(doc, quotes, recommended_insurer, broker_fee_pct
             parent = p._element.getparent()
             idx = parent.index(p._element)
             parent.remove(p._element)
-            tbl = doc.add_table(rows=1 + len(insurers), cols=3)
+            tbl = doc.add_table(rows=1 + len(row_data), cols=3)
             tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
             tbl.autofit = True
+
+            # Set up headers
             headers = ["Insurer / Underwriter", "Premium Payable", "Comment"]
             for col in range(3):
                 cell = tbl.cell(0, col)
@@ -171,17 +192,11 @@ def insert_market_summary_table(doc, quotes, recommended_insurer, broker_fee_pct
                         r.font.size = Pt(9)
                         r.font.name = "Futura Bk BT (Body)"
                         r.font.color.rgb = RGBColor(0, 0, 0)
-            for row_idx, insurer in enumerate(insurers, 1):
+
+            # Add dynamic rows
+            for row_idx, (insurer_label, premium, comment) in enumerate(row_data, 1):
                 color = "e9edf7" if row_idx % 2 == 1 else "FFFFFF"
-                data = quotes.get(insurer)
-                premium = None
-                comment = "Insurer did not respond in time"
-                if data:
-                    enriched = enrich_insurer_quotes({insurer: data}, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
-                    premium = enriched[insurer].get("final_total")
-                    comment = "Recommended" if insurer == recommended_insurer else ""
-                insurer_label = f"{insurer} – Underwritten by {underwriters.get(insurer, 'Unknown')}"
-                cells = [insurer_label, format_currency(premium) if premium else "", comment]
+                cells = [insurer_label, premium, comment]
                 for col_idx, value in enumerate(cells):
                     cell = tbl.cell(row_idx, col_idx)
                     cell.text = value if value else ""

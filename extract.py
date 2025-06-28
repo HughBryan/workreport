@@ -70,11 +70,11 @@ Important to know when extracting:
 - ESL is commonly known as FSL
 - Machinary breakdown is often called equipment breakdown
 - Some insurers such as Insurance Investment Solutions will have many excesses. It is important to get every excess. They may have excesses on property, liability, voluntary workers, equipment, office bearers, and government audit and legal expenses
-- Voluntary workers comp is also known as personal accident
+- Voluntary workers comp is also known as personal accident and is typically $200,000
 - Additional benefits is the same as Extra benefits or additional limits
 - For common contents if its not specified, just say 'Included in BSI'.  
 - Always use the 'Insurer Alternative value' for all features such as common contents.
-- Paint & wallpaper is always "Included".
+- Public Liability (also known as liability to others) is always 10,20,30,40 or 50 million dollars.
 
 
 - FOR IIS in particular EXTRACT EVERY EXCESS (all the excesses you can expect are below)
@@ -160,18 +160,22 @@ def update_master_json(master, new):
                         master["Quotes"][insurer][field] = value
 
 
-def process_folder(folder_path, output_path):
+def process_folder(folder_path, output_path, log_callback=None):
     import copy
     master = copy.deepcopy(main_schema)
     for filename in os.listdir(folder_path):
         if filename.lower().endswith('.pdf'):
             text = extract_text_from_pdf(os.path.join(folder_path, filename))
             quote_json = extract_quote_data(text)
-            print(filename,"has been completed")
             update_master_json(master, quote_json)
+            if log_callback:
+                log_callback(f"{filename} has been completed")  # <-- This will print to GUI log
+            else:
+                print(f"{filename} has been completed")
     master["general_info"]["current_date"] = (datetime.now().strftime("%d/%m/%Y"))
     with open(output_path, "w") as f:
         json.dump(master, f, indent=2)
+
 
 # Optional: keep your single-file processor
 def process_pdf(input_path, output_path):

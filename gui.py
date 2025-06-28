@@ -86,12 +86,12 @@ class QuoteExtractorGUI:
 
         tk.Label(row2, text="Associate Split (%):", bg="#dbe5f1", font=("Helvetica", 11)).pack(side=tk.LEFT)
 
-        self.associate_split_var = tk.DoubleVar(value=20.00)
-        self.broker_split_var = tk.DoubleVar(value=80.00)
+        self.associate_split_var = tk.DoubleVar(value=60.00)
+        self.broker_split_var = tk.DoubleVar(value=40.00)
 
         self.assoc_entry = tk.Entry(row2, width=7, font=("Helvetica", 11), justify='center')
         self.assoc_entry.pack(side=tk.LEFT, padx=(5, 3))
-        self.assoc_entry.insert(0, "20.00")
+        self.assoc_entry.insert(0, "60.00")
         self.assoc_entry.bind('<FocusOut>', self.entry_associate_split_update)
         self.assoc_entry.bind('<Return>', self.entry_associate_split_update)
 
@@ -104,7 +104,7 @@ class QuoteExtractorGUI:
 
         self.broker_entry = tk.Entry(row2, width=7, font=("Helvetica", 11), justify='center')
         self.broker_entry.pack(side=tk.LEFT, padx=(3, 5))
-        self.broker_entry.insert(0, "80.00")
+        self.broker_entry.insert(0, "40.00")
         self.broker_entry.configure(state='readonly')
 
         tk.Label(row2, text=": Broker Share (%)", bg="#dbe5f1", font=("Helvetica", 11)).pack(side=tk.LEFT)
@@ -267,9 +267,11 @@ class QuoteExtractorGUI:
 
     def log(self, message):
         self.log_text.config(state='normal')
-        self.log_text.insert(tk.END, f"{message}\n")
+        # Always prefix with '>'
+        self.log_text.insert(tk.END, f"> {message}\n")
         self.log_text.see(tk.END)
         self.log_text.config(state='disabled')
+
 
     def update_info_label(self):
         folder_name = os.path.basename(self.quote_folder) if self.quote_folder else "None"
@@ -304,7 +306,8 @@ class QuoteExtractorGUI:
 
         try:
             # Pass broker_fee and commission to your extract/process code if needed
-            process_folder(self.quote_folder, output_path)
+            process_folder(self.quote_folder, output_path, log_callback=self.log)
+
             self.log(f"Extraction complete. JSON saved to: {output_path}")
 
         except Exception as e:
