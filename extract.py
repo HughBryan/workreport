@@ -2,29 +2,17 @@ import pdfplumber
 import json
 import re
 import os
-from openai import OpenAI
-from dotenv import load_dotenv
 import sys
 from datetime import datetime
-
-
-
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-openai = OpenAI()
-
+from llama_cpp import Llama
 
 def resource_path(relative_path):
-
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
     except AttributeError:
         base_path = os.path.abspath(".")
-
     return os.path.join(base_path, relative_path)
-
 
 with open(resource_path("main_schema.json")) as f:
     main_schema = json.load(f)
@@ -32,19 +20,17 @@ with open(resource_path("main_schema.json")) as f:
 with open(resource_path("quote_schema.json")) as f:
     quote_schema = json.load(f)
 
+# Load model ONCE at import
+llm = Llama(model_path=resource_path("phi-3-mini-4k-instruct-q4.gguf"), n_ctx=4096)
 
 def extract_text_from_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         return "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
 
 def extract_quote_data(text):
-    messages = [
-        {
-            "role": "system",
-            "content": f"""You are an assistant that extracts structured insurance quote data from unstructured PDF text.
+    prompt = f"""You are an assistant that extracts structured insurance quote data from unstructured PDF text.
 
 For each quote I give you, I want you to follow the below quote-schema JSON configuration. We are going to fill out all the information in the below JSON with the information from the quote pdf I provide. Most values of the 'features' section are either a dollar amount, or "included" or "Not Included". Try to stick to that. 
-
 
 {json.dumps(quote_schema)}
 
@@ -52,9 +38,7 @@ Here is my current JSON file, it contains all the current information from previ
 
 {json.dumps(main_schema)}
 
-
- 
-You will be given insruance quotations from multiple insurers, including but not limited to: CHU (also known as QBE), Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI,  IIS (insurance investment solutions) etc. Try use these names as the insurers name if they match.
+You will be given insurance quotations from multiple insurers, including but not limited to: CHU (also known as QBE), Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI,  IIS (insurance investment solutions) etc. Try use these names as the insurers name if they match.
 
 Guidelines:
 - If the quote doesn't mention a value, leave it blank or 0
@@ -76,7 +60,6 @@ Important to know when extracting:
 - For common contents if its not specified, just say 'Included in BSI'.  
 - Always use the 'Insurer Alternative value' for all features such as common contents.
 - Paint & wallpaper is always "Included".
-
 
 - FOR IIS in particular EXTRACT EVERY EXCESS (all the excesses you can expect are below)
 
@@ -115,23 +98,26 @@ Section 7 - Gov't Audit & Legal Expenses
 Section 7a Taxation & Audit Excess
 Section 7b Work Health Safety Excess
 Section 7c Legal Expenses Excess
-Section 7c Legal Expenses Contribution"""
-        },
-        {"role": "user", "content": text}
-    ]
+Section 7c Legal Expenses Contribution
 
-    response = openai.chat.completions.create(
-        model="gpt-4o",  # or gpt-4-turbo if preferred
-        messages=messages,
-        temperature=0
-    )
-    content = response.choices[0].message.content.strip()
+-------------------------
+PDF QUOTE TEXT:
+{text}
 
-    # Remove ```json ... ``` or ``` ... ``` wrappers if present
-    match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
+Return ONLY the completed JSON object.
+"""
+    output = llm(prompt, max_tokens=2048, stop=["```", "</s>"])
+    result_text = output["choices"][0]["text"].strip()
+    # Remove triple backtick wrappers if present
+    match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", result_text, re.DOTALL)
     if match:
-        content = match.group(1).strip()
-    return json.loads(content)
+        result_text = match.group(1).strip()
+    try:
+        return json.loads(result_text)
+    except Exception:
+        print("Failed to parse JSON from model output:")
+        print(result_text)
+        return {}
 
 def update_master_json(master, new):
     # Update general_info
@@ -146,7 +132,6 @@ def update_master_json(master, new):
             if insurer not in master["Quotes"]:
                 master["Quotes"][insurer] = info
                 continue  # Already added all info, skip to next insurer
-
             # Otherwise update fields as before
             for field, value in info.items():
                 if isinstance(value, dict):
@@ -160,7 +145,6 @@ def update_master_json(master, new):
                     if value not in ("", 0, None):
                         master["Quotes"][insurer][field] = value
 
-
 def process_folder(folder_path, output_path):
     import copy
     master = copy.deepcopy(main_schema)
@@ -168,15 +152,17 @@ def process_folder(folder_path, output_path):
         if filename.lower().endswith('.pdf'):
             text = extract_text_from_pdf(os.path.join(folder_path, filename))
             quote_json = extract_quote_data(text)
-            print(filename,"has been completed")
+            print(filename, "has been completed")
             update_master_json(master, quote_json)
     master["general_info"]["current_date"] = (datetime.now().strftime("%d/%m/%Y"))
     with open(output_path, "w") as f:
         json.dump(master, f, indent=2)
 
-# Optional: keep your single-file processor
 def process_pdf(input_path, output_path):
     text = extract_text_from_pdf(input_path)
     result = extract_quote_data(text)
     with open(output_path, 'w') as f:
         json.dump(result, f, indent=2)
+
+if __name__ == "__main__":
+    process_pdf(".\Quote.pdf","test.json")
