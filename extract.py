@@ -53,14 +53,28 @@ Here is my current JSON file, it contains all the current information from previ
 
 
  
-You will be given insruance quotations from multiple insurers, including but not limited to: CHU (also known as QBE), Flex (also known as CHUISAVER), SUU, Hutch, Axis, Rubix, BARN, Longitude, QUS, SCI,  IIS (insurance investment solutions) etc. Try use these names as the insurers name if they match.
+You will be given insruance quotations from multiple insurers. This may be included but not limited to the following: 
+CHU (also known as QBE), 
+Flex (also known as: CHU iSaver / CHUISAVER), 
+SUU, 
+Hutch, 
+Axis, 
+Rubix, 
+BARN, 
+Longitude, 
+QUS, 
+SCI,  
+IIS (also known as: Insurance Investment Solutions).
+
+When there is another alias for the insurer, use the abbreviated main name I have provided above.
+
 
 Guidelines:
 - If the quote doesn't mention a value, leave it blank or 0
 - COPY THE SCHEMA's VALUE TYPES EXACTLY: if it is a blank string, your output for that entry must be a string. If it is a value PUT A VALUE. For example, Voltunary worker is a 0 in the schema - indicating that it needs the exact value the insurer sets.
 - Extract excesses and limits if specified
 - Only return the completed JSON object
-- IF there is a terrorism levy - add it to the base premium
+- IF there is a terrorism levy, add it to the base premium
 
 Important to know when extracting:
 - BSI is known as the building sum insured. It may also just be referred to as building. It is typically one of the first values. Should be in the hundreds of thousands / millions.
@@ -73,6 +87,7 @@ Important to know when extracting:
 - Voluntary workers comp is also known as personal accident and is typically $200,000
 - Additional benefits is the same as Extra benefits or additional limits
 - For common contents if its not specified, just say 'Included in BSI'.  
+- Fidelity is also known as: loss of funds, theft of funds.
 - Always use the 'Insurer Alternative value' for all features such as common contents.
 - Public Liability (also known as liability to others) is always 10,20,30,40 or 50 million dollars.
 

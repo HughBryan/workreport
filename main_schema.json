@@ -4,7 +4,16 @@
     "address": "",
     "current_date": "",
     "inception_date": "",
-    "expiry_date": ""
+    "expiry_date": "",
+
+    "construction_year":"",
+    "number_residential_units_lots":"",
+    "number_commerical_units_lots":"",
+    "number_storey_floors":"",
+    "number_basement":"",
+    "wall_material":"",
+    "floor_material":"",
+    "roof_material":""
 
   },
   "Quotes": {}
