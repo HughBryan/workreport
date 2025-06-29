@@ -29,8 +29,23 @@ def format_currency(value, decimals=2):
         return str(value)
 
 def calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_without_gst, fixed_broker_fee=0):
+
+    # If we are adding a fixed fee.
     if fixed_broker_fee > 0:
-        return round(fixed_broker_fee, 2)
+        commission_adjustment = 0
+
+        # If we are still doing commission - need to add the commission for insurers that don't do commissions in their quotes.
+        if commission_without_gst == 0:
+            commission_adjustment = (base*commission_pct/100)-commission_without_gst
+
+            # don't bother if its only a few cents.
+            if commission_adjustment < 1:
+                commission_adjustment = 0
+
+ 
+        print(fixed_broker_fee+commission_adjustment)
+        # if we are adding fixed fee: brokerfee + commission shortfall
+        return round(fixed_broker_fee+commission_adjustment, 2)
     try:
         commission_without_gst_val = float(commission_without_gst)
     except (ValueError, TypeError):

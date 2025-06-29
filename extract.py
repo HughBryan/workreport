@@ -36,7 +36,7 @@ def extract_text_from_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         return "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
 
-def extract_quote_data(text):
+def extract_quote_data(text,longitude_option):
     messages = [
         {
             "role": "system",
@@ -75,6 +75,7 @@ Guidelines:
 - Extract excesses and limits if specified
 - Only return the completed JSON object
 - IF there is a terrorism levy, add it to the base premium
+- Longitude offers a 'current option' and a 'suggested option', use the f{longitude_option}
 
 Important to know when extracting:
 - BSI is known as the building sum insured. It may also just be referred to as building. It is typically one of the first values. Should be in the hundreds of thousands / millions.
@@ -90,6 +91,8 @@ Important to know when extracting:
 - Fidelity is also known as: loss of funds, theft of funds.
 - Always use the 'Insurer Alternative value' for all features such as common contents.
 - Public Liability (also known as liability to others) is always 10,20,30,40 or 50 million dollars.
+- "Additional and extra benefits commonly includes: taxation and audit costs, workpalce health and safety breaches, and legal defence expenses. 
+- LIST the dollar value associated with each additional / extract benefit.
 
 
 - FOR IIS in particular EXTRACT EVERY EXCESS (all the excesses you can expect are below)
@@ -175,13 +178,13 @@ def update_master_json(master, new):
                         master["Quotes"][insurer][field] = value
 
 
-def process_folder(folder_path, output_path, log_callback=None):
+def process_folder(folder_path, output_path, longitude_option = "Current Option", log_callback=None):
     import copy
     master = copy.deepcopy(main_schema)
     for filename in os.listdir(folder_path):
         if filename.lower().endswith('.pdf'):
             text = extract_text_from_pdf(os.path.join(folder_path, filename))
-            quote_json = extract_quote_data(text)
+            quote_json = extract_quote_data(text,longitude_option)
             update_master_json(master, quote_json)
             if log_callback:
                 log_callback(f"{filename} has been completed")  # <-- This will print to GUI log
