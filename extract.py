@@ -85,7 +85,7 @@ Guidelines:
 - COPY THE SCHEMA's VALUE TYPES EXACTLY: if it is a blank string, your output for that entry must be a string. If it is a value PUT A VALUE. For example, Voltunary worker is a 0 in the schema - indicating that it needs the exact value the insurer sets.
 - Extract excesses and limits if specified
 - Only return the completed JSON object
-- IF there is a terrorism levy, add it to the base premium
+- IF there is a terrorism levy, add it to esl
 - Longitude offers a 'current option' and a 'suggested option', use the f{longitude_option}
 
 Important to know when extracting:
@@ -104,7 +104,8 @@ Important to know when extracting:
 - Public Liability (also known as liability to others) is always 10,20,30,40 or 50 million dollars.
 - "Additional and extra benefits commonly includes: taxation and audit costs, workpalce health and safety breaches, and legal defence expenses. 
 - LIST the dollar value associated with each additional / extract benefit..
-- STATE the dollar cost/value of each additional excess(es).
+- YOU MUST list the COST of EVERY additional excess(es)
+- Extract the value listed for “Base Premium” in the main premium breakdown, not any subtotals or split lines.
 
 
 - FOR IIS in particular EXTRACT EVERY EXCESS (all the excesses you can expect are below)
