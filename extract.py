@@ -103,7 +103,8 @@ Important to know when extracting:
 - Always use the 'Insurer Alternative value' for all features such as common contents.
 - Public Liability (also known as liability to others) is always 10,20,30,40 or 50 million dollars.
 - "Additional and extra benefits commonly includes: taxation and audit costs, workpalce health and safety breaches, and legal defence expenses. 
-- LIST the dollar value associated with each additional / extract benefit.
+- LIST the dollar value associated with each additional / extract benefit..
+- STATE the dollar cost/value of each additional excess(es).
 
 
 - FOR IIS in particular EXTRACT EVERY EXCESS (all the excesses you can expect are below)
