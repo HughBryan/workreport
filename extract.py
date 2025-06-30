@@ -6,11 +6,22 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import sys
 from datetime import datetime
-
+from openai import AzureOpenAI  
 
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-openai = OpenAI()
+
+# --- Azure OpenAI Credentials ---
+azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+
+# Instantiate Azure OpenAI client
+openai = AzureOpenAI(
+    api_key=azure_api_key,
+    azure_endpoint=azure_endpoint,
+    api_version=azure_api_version,
+)
 
 
 def resource_path(relative_path):
@@ -198,6 +209,9 @@ def process_folder(folder_path, output_path, longitude_option = "Current Option"
 # Optional: keep your single-file processor
 def process_pdf(input_path, output_path):
     text = extract_text_from_pdf(input_path)
-    result = extract_quote_data(text)
+    result = extract_quote_data(text,"current insurer")
     with open(output_path, 'w') as f:
         json.dump(result, f, indent=2)
+
+if __name__ == "__main__":
+    print(process_pdf("Quote.pdf","output.json"))
