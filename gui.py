@@ -50,21 +50,23 @@ class QuoteExtractorGUI:
         row1.pack(fill='x', pady=5)
 
         ttk.Label(row1, text="Commission (%):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
-        self.commission_var = ttk.IntVar(value=self.commission)
+        self.commission_var = ttk.DoubleVar(value=self.commission)
         self.comm_entry = ttk.Entry(row1, width=5, textvariable=self.commission_var, justify='center')
         self.comm_entry.grid(row=0, column=1, padx=5)
         self.comm_slider = ttk.Scale(row1, from_=0, to=100, orient='horizontal', variable=self.commission_var, length=100)
+        self.comm_slider.config(command=self.slider_commission_update)
         self.comm_slider.grid(row=0, column=2, padx=5)
 
         ttk.Label(row1, text="Broker Fee (%):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
-        self.broker_fee_var = ttk.IntVar(value=self.broker_fee)
+        self.broker_fee_var = ttk.DoubleVar(value=self.broker_fee)
         self.fee_entry = ttk.Entry(row1, width=5, textvariable=self.broker_fee_var, justify='center')
         self.fee_entry.grid(row=1, column=1, padx=5)
         self.fee_slider = ttk.Scale(row1, from_=0, to=100, orient='horizontal', variable=self.broker_fee_var, length=100)
+        self.fee_slider.config(command=self.slider_broker_fee_update)
         self.fee_slider.grid(row=1, column=2, padx=5)
 
         self.use_fixed_fee_var = ttk.BooleanVar(value=False)
-        self.fixed_fee_check = ttk.Checkbutton(row1, text="Use Fixed $ Fee", variable=self.use_fixed_fee_var)
+        self.fixed_fee_check = ttk.Checkbutton(row1, text="Use Fixed $ Fee", variable=self.use_fixed_fee_var, command=self.toggle_fixed_fee)
         self.fixed_fee_check.grid(row=1, column=3, padx=10, sticky="w")
 
         self.fixed_fee_var = ttk.DoubleVar(value=0)
@@ -81,6 +83,7 @@ class QuoteExtractorGUI:
         self.assoc_entry = ttk.Entry(row2, width=7, textvariable=self.associate_split_var, justify='center')
         self.assoc_entry.pack(side='left', padx=(5, 3))
         self.assoc_slider = ttk.Scale(row2, from_=0, to=100, orient='horizontal', variable=self.associate_split_var, length=100)
+        self.assoc_slider.config(command=self.slider_associate_split_update)
         self.assoc_slider.pack(side='left', padx=(5, 8))
 
         self.broker_entry = ttk.Entry(row2, width=7, justify='center')
@@ -218,14 +221,20 @@ class QuoteExtractorGUI:
             self.broker_entry.config(state='readonly')
 
     def slider_associate_split_update(self, val=None):
-        val = round(self.associate_split_var.get(), 2)
-        broker_val = round(100 - val, 2)
-        self.assoc_entry.delete(0, tk.END)
-        self.assoc_entry.insert(0, f"{val:.2f}")
-        self.broker_entry.config(state='normal')
-        self.broker_entry.delete(0, tk.END)
-        self.broker_entry.insert(0, f"{broker_val:.2f}")
-        self.broker_entry.config(state='readonly')
+        try:
+            val = round(float(val))
+            if val < 0: val = 0
+            if val > 100: val = 100
+            self.associate_split_var.set(val)
+            self.broker_split_var.set(100 - val)
+            self.assoc_entry.delete(0, tk.END)
+            self.assoc_entry.insert(0, f"{val:.2f}")
+            self.broker_entry.config(state='normal')
+            self.broker_entry.delete(0, tk.END)
+            self.broker_entry.insert(0, f"{(100 - val):.2f}")
+            self.broker_entry.config(state='readonly')
+        except (ValueError, tk.TclError):
+            pass
 
     def entry_associate_split_update(self, event=None):
         try:
@@ -235,13 +244,17 @@ class QuoteExtractorGUI:
         except ValueError:
             val = 20.0
         self.associate_split_var.set(val)
+        self.broker_split_var.set(100 - val)
         self.slider_associate_split_update()
 
-    # --- Broker Fee Sync Logic ---
     def slider_broker_fee_update(self, val=None):
-        self.broker_fee = self.broker_fee_var.get()
-        self.fee_entry.delete(0, tk.END)
-        self.fee_entry.insert(0, str(self.broker_fee))
+        try:
+            val = round(float(val))
+            self.broker_fee_var.set(val)
+            self.fee_entry.delete(0, tk.END)
+            self.fee_entry.insert(0, f"{val:.2f}")
+        except (ValueError, tk.TclError):
+            pass
 
     def entry_broker_fee_update(self, event=None):
         try:
@@ -259,9 +272,13 @@ class QuoteExtractorGUI:
 
     # --- Commission Sync Logic ---
     def slider_commission_update(self, val=None):
-        self.commission = self.commission_var.get()
-        self.comm_entry.delete(0, tk.END)
-        self.comm_entry.insert(0, str(self.commission))
+        try:
+            val = round(float(val))
+            self.commission_var.set(val)
+            self.comm_entry.delete(0, tk.END)
+            self.comm_entry.insert(0, f"{val:.2f}")
+        except (ValueError, tk.TclError):
+            pass
 
     def entry_commission_update(self, event=None):
         try:

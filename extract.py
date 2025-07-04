@@ -85,7 +85,7 @@ Guidelines:
 - COPY THE SCHEMA's VALUE TYPES EXACTLY: if it is a blank string, your output for that entry must be a string. If it is a value PUT A VALUE. For example, Voltunary worker is a 0 in the schema - indicating that it needs the exact value the insurer sets.
 - Extract excesses and limits if specified
 - Only return the completed JSON object
-- IF there is a terrorism levy, add it to esl
+- IF there is a terrorism levy, add it to base premium
 - Longitude offers a 'current option' and a 'suggested option', use the {longitude_option}
 
 Important to know when extracting:

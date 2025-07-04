@@ -43,7 +43,6 @@ def calculate_broker_fee(base, broker_fee_pct, commission_pct, commission_withou
                 commission_adjustment = 0
 
  
-        print(fixed_broker_fee+commission_adjustment)
         # if we are adding fixed fee: brokerfee + commission shortfall
         return round(fixed_broker_fee+commission_adjustment, 2)
     try:
@@ -167,6 +166,7 @@ def insert_market_summary_table(doc, quotes, recommended_insurer, broker_fee_pct
 
     # Gather all unique insurer keys: those present in the quotes + those in the master list
     all_insurers = list({insurer for insurer in quotes} | set(master_insurers))
+    all_insurers.sort()
 
     # Prepare data for table rows
     row_data = []
