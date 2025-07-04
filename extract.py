@@ -86,7 +86,7 @@ Guidelines:
 - Extract excesses and limits if specified
 - Only return the completed JSON object
 - IF there is a terrorism levy, add it to esl
-- Longitude offers a 'current option' and a 'suggested option', use the f{longitude_option}
+- Longitude offers a 'current option' and a 'suggested option', use the {longitude_option}
 
 Important to know when extracting:
 - BSI is known as the building sum insured. It may also just be referred to as building. It is typically one of the first values. Should be in the hundreds of thousands / millions.

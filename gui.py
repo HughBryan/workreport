@@ -3,187 +3,144 @@ from tkinter import filedialog, messagebox, scrolledtext
 import os
 from extract import process_folder
 from report_generator import load_json, generate_report, resource_path
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+
 
 class QuoteExtractorGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Insurance Quote Processor")
-        self.root.geometry("720x600")
-        self.root.configure(bg="#dbe5f1")
+        self.root.update_idletasks()
+        self.root.minsize(self.root.winfo_width(), self.root.winfo_height())
 
         self.quote_folder = ""
         self.output_folder = ""
         self.quote_count = 0
-        self.broker_fee = 20  # Default to 20%
-        self.commission = 20  # Default to 10%
-        self.template_path = None  # Path to the selected template
+        self.broker_fee = 20
+        self.commission = 20
+        self.template_path = None
 
         self.setup_ui()
 
     def setup_ui(self):
-        title = tk.Label(
-            self.root, text="Insurance Quote Processor",
-            font=("Helvetica", 16, "bold"),
-            bg="#dbe5f1", fg="#1f3b57"
+        # Header Frame
+        header_frame = ttk.Labelframe(self.root, text="", padding=10)
+        header_frame.pack(fill='x', padx=10, pady=(15, 10))
+
+        title_label = ttk.Label(
+            header_frame,
+            text="Clearlake Strata Report Generator",
+            font=("Helvetica", 20, "bold")
         )
-        title.pack(pady=10)
+        title_label.pack(pady=(5, 2))
 
-        self.info_label = tk.Label(
-            self.root, text="Quote Folder: None | Output Folder: None | Quotes Found: 0",
-            bg="#dbe5f1", fg="#1f3b57", anchor='w', justify="left"
-        )
-        self.info_label.pack(padx=10, fill=tk.X)
+        ttk.Separator(header_frame, orient='horizontal').pack(fill='x', pady=(0, 5))
 
-        self.template_label = tk.Label(
-            self.root, text="Template: Default (report_template.docx)",
-            bg="#dbe5f1", fg="#1f3b57", anchor='w', justify="left"
-        )
-        self.template_label.pack(padx=10, fill=tk.X)
+        self.info_label = ttk.Label(header_frame, text="Quote Folder: None | Output Folder: None | Quotes Found: 0")
+        self.info_label.pack(pady=(5, 0), fill='x')
 
-        # --- Configuration Section ---
-        config_frame = tk.LabelFrame(self.root, text="Pricing Configuration", bg="#dbe5f1", fg="#1f3b57",
-                                     font=("Helvetica", 11, "bold"))
-        config_frame.pack(padx=10, pady=(10, 5), fill=tk.X)
+        self.template_label = ttk.Label(header_frame, text="Template: Default (report_template.docx)")
+        self.template_label.pack(pady=(2, 5), fill='x')
 
-        # Row 1: Broker Fee and Commission
-        row1 = tk.Frame(config_frame, bg="#dbe5f1")
-        row1.pack(fill=tk.X, pady=5)
+        config_frame = ttk.Labelframe(self.root, text="Pricing Configuration")
+        config_frame.pack(padx=10, pady=(10, 5), fill='x')
 
-        tk.Label(row1, text="Commission (%):", bg="#dbe5f1", font=("Helvetica", 11)).grid(row=0, column=0, padx=5, pady=2, sticky="w")
-        self.commission_var = tk.IntVar(value=self.commission)
-        self.comm_entry = tk.Entry(row1, width=5, font=("Helvetica", 11), justify='center')
+        row1 = ttk.Frame(config_frame)
+        row1.pack(fill='x', pady=5)
+
+        ttk.Label(row1, text="Commission (%):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        self.commission_var = ttk.IntVar(value=self.commission)
+        self.comm_entry = ttk.Entry(row1, width=5, textvariable=self.commission_var, justify='center')
         self.comm_entry.grid(row=0, column=1, padx=5)
-        self.comm_entry.insert(0, str(self.commission))
-        self.comm_entry.bind('<FocusOut>', self.entry_commission_update)
-        self.comm_entry.bind('<Return>', self.entry_commission_update)
-        self.comm_slider = tk.Scale(row1, from_=0, to=100, orient=tk.HORIZONTAL,
-                                    variable=self.commission_var, command=self.slider_commission_update,
-                                    showvalue=0, resolution=1, length=100,
-                                    bg="#dbe5f1", troughcolor="#b0c4de", highlightthickness=0)
+        self.comm_slider = ttk.Scale(row1, from_=0, to=100, orient='horizontal', variable=self.commission_var, length=100)
         self.comm_slider.grid(row=0, column=2, padx=5)
 
-        tk.Label(row1, text="Broker Fee:", bg="#dbe5f1", font=("Helvetica", 11)).grid(row=1, column=0, padx=5, pady=2, sticky="w")
-        self.broker_fee_var = tk.IntVar(value=self.broker_fee)
-        self.fee_entry = tk.Entry(row1, width=5, font=("Helvetica", 11), justify='center')
+        ttk.Label(row1, text="Broker Fee (%):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        self.broker_fee_var = ttk.IntVar(value=self.broker_fee)
+        self.fee_entry = ttk.Entry(row1, width=5, textvariable=self.broker_fee_var, justify='center')
         self.fee_entry.grid(row=1, column=1, padx=5)
-        self.fee_entry.insert(0, str(self.broker_fee))
-        self.fee_entry.bind('<FocusOut>', self.entry_broker_fee_update)
-        self.fee_entry.bind('<Return>', self.entry_broker_fee_update)
-        self.fee_slider = tk.Scale(row1, from_=0, to=100, orient=tk.HORIZONTAL,
-                                   variable=self.broker_fee_var, command=self.slider_broker_fee_update,
-                                   showvalue=0, resolution=1, length=100,
-                                   bg="#dbe5f1", troughcolor="#b0c4de", highlightthickness=0)
+        self.fee_slider = ttk.Scale(row1, from_=0, to=100, orient='horizontal', variable=self.broker_fee_var, length=100)
         self.fee_slider.grid(row=1, column=2, padx=5)
 
-        self.use_fixed_fee_var = tk.BooleanVar(value=False)
-        self.fixed_fee_check = tk.Checkbutton(row1, text="Use Fixed $ Fee", variable=self.use_fixed_fee_var,
-                                              command=self.toggle_fixed_fee, bg="#dbe5f1", font=("Helvetica", 10))
+        self.use_fixed_fee_var = ttk.BooleanVar(value=False)
+        self.fixed_fee_check = ttk.Checkbutton(row1, text="Use Fixed $ Fee", variable=self.use_fixed_fee_var)
         self.fixed_fee_check.grid(row=1, column=3, padx=10, sticky="w")
 
-        self.fixed_fee_var = tk.DoubleVar(value=0)
-        self.fixed_fee_entry = tk.Entry(row1, width=7, font=("Helvetica", 11), justify='center',
-                                        textvariable=self.fixed_fee_var, state='disabled')
+        self.fixed_fee_var = ttk.DoubleVar(value=0)
+        self.fixed_fee_entry = ttk.Entry(row1, width=7, textvariable=self.fixed_fee_var, justify='center', state='disabled')
         self.fixed_fee_entry.grid(row=1, column=4, padx=5)
 
-        # Row 2: Associate Split
-        row2 = tk.Frame(config_frame, bg="#dbe5f1")
-        row2.pack(fill=tk.X, pady=5)
+        row2 = ttk.Frame(config_frame)
+        row2.pack(fill='x', pady=5)
 
-        tk.Label(row2, text="Associate Split (%):", bg="#dbe5f1", font=("Helvetica", 11)).pack(side=tk.LEFT)
+        ttk.Label(row2, text="Associate Split (%):").pack(side='left')
+        self.associate_split_var = ttk.DoubleVar(value=60.00)
+        self.broker_split_var = ttk.DoubleVar(value=40.00)
 
-        self.associate_split_var = tk.DoubleVar(value=60.00)
-        self.broker_split_var = tk.DoubleVar(value=40.00)
+        self.assoc_entry = ttk.Entry(row2, width=7, textvariable=self.associate_split_var, justify='center')
+        self.assoc_entry.pack(side='left', padx=(5, 3))
+        self.assoc_slider = ttk.Scale(row2, from_=0, to=100, orient='horizontal', variable=self.associate_split_var, length=100)
+        self.assoc_slider.pack(side='left', padx=(5, 8))
 
-        self.assoc_entry = tk.Entry(row2, width=7, font=("Helvetica", 11), justify='center')
-        self.assoc_entry.pack(side=tk.LEFT, padx=(5, 3))
-        self.assoc_entry.insert(0, "60.00")
-        self.assoc_entry.bind('<FocusOut>', self.entry_associate_split_update)
-        self.assoc_entry.bind('<Return>', self.entry_associate_split_update)
-
-        self.assoc_slider = tk.Scale(row2, from_=0, to=100, orient=tk.HORIZONTAL,
-                                    resolution=0.1,
-                                    variable=self.associate_split_var, command=self.slider_associate_split_update,
-                                    showvalue=0, length=100,
-                                    bg="#dbe5f1", troughcolor="#b0c4de", highlightthickness=0)
-        self.assoc_slider.pack(side=tk.LEFT, padx=(5, 8))
-
-        self.broker_entry = tk.Entry(row2, width=7, font=("Helvetica", 11), justify='center')
-        self.broker_entry.pack(side=tk.LEFT, padx=(3, 5))
+        self.broker_entry = ttk.Entry(row2, width=7, justify='center')
+        self.broker_entry.pack(side='left', padx=(3, 5))
         self.broker_entry.insert(0, "40.00")
-        self.broker_entry.configure(state='readonly')
+        self.broker_entry.config(state='readonly')
 
-        tk.Label(row2, text=": Broker Share (%)", bg="#dbe5f1", font=("Helvetica", 11)).pack(side=tk.LEFT)
+        ttk.Label(row2, text=": Broker Share (%)").pack(side='left')
 
-        # Row 3: Strata Manager
-        row3 = tk.Frame(config_frame, bg="#dbe5f1")
-        row3.pack(fill=tk.X, pady=5)
-        self.strata_checkbox_var = tk.BooleanVar(value=True)
-        self.strata_checkbox = tk.Checkbutton(row3, text="Strata Manager:", variable=self.strata_checkbox_var,
-                                              bg="#dbe5f1", font=("Helvetica", 11), command=self.toggle_strata_entry)
-        self.strata_checkbox.pack(side=tk.LEFT)
-        self.strata_manager_var = tk.StringVar()
-        self.strata_entry = tk.Entry(row3, width=30, font=("Helvetica", 11), textvariable=self.strata_manager_var)
-        self.strata_entry.pack(side=tk.LEFT, padx=(5, 10))
+        row3 = ttk.Frame(config_frame)
+        row3.pack(fill='x', pady=5)
+        self.strata_checkbox_var = ttk.BooleanVar(value=True)
+        self.strata_checkbox = ttk.Checkbutton(row3, text="Strata Manager:", variable=self.strata_checkbox_var)
+        self.strata_checkbox.pack(side='left')
+        self.strata_manager_var = ttk.StringVar()
+        self.strata_entry = ttk.Entry(row3, width=30, textvariable=self.strata_manager_var)
+        self.strata_entry.pack(side='left', padx=(5, 10))
 
-        # Row 4: Longitude Option (radio buttons)
-        row4 = tk.Frame(config_frame, bg="#dbe5f1")
-        row4.pack(fill=tk.X, pady=5)
-        self.longitude_option_var = tk.StringVar(value="current")
-        tk.Label(row4, text="Longitude Quotation Basis:", bg="#dbe5f1", font=("Helvetica", 11)).pack(side=tk.LEFT, padx=(0, 8))
-        tk.Radiobutton(
-            row4,
-            text="Current Option",
-            variable=self.longitude_option_var,
-            value="current",
-            bg="#dbe5f1",
-            font=("Helvetica", 11)
-        ).pack(side=tk.LEFT)
-        tk.Radiobutton(
-            row4,
-            text="Suggested Option",
-            variable=self.longitude_option_var,
-            value="suggested",
-            bg="#dbe5f1",
-            font=("Helvetica", 11)
-        ).pack(side=tk.LEFT, padx=(10, 0))
+        row4 = ttk.Frame(config_frame)
+        row4.pack(fill='x', pady=5)
+        self.longitude_option_var = ttk.StringVar(value="current")
+        ttk.Label(row4, text="Longitude Quotation Basis:").pack(side='left', padx=(0, 8))
+        ttk.Radiobutton(row4, text="Current Option", variable=self.longitude_option_var, value="current").pack(side='left')
+        ttk.Radiobutton(row4, text="Suggested Option", variable=self.longitude_option_var, value="suggested").pack(side='left', padx=(10, 0))
 
-        # --- Log Frame ---
-        self.log_frame = tk.Frame(self.root, bg="#e7edf4", bd=2, relief=tk.GROOVE)
-        self.log_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
-        log_label = tk.Label(self.log_frame, text="Log:", anchor='w', font=("Helvetica", 10, "bold"), bg="#e7edf4")
-        log_label.pack(fill=tk.X)
-        self.log_text = scrolledtext.ScrolledText(self.log_frame, height=10, state='disabled', wrap=tk.WORD, bg="#ffffff")
-        self.log_text.pack(fill=tk.BOTH, expand=True)
+        # Add log section with title
+        log_frame = ttk.Labelframe(self.root, text="Log")
+        log_frame.pack(padx=10, pady=(10, 0), fill='both', expand=False)
 
-        # --- Button Frame ---
-        button_frame = tk.Frame(self.root, bg="#dbe5f1")
-        button_frame.pack(side=tk.BOTTOM, pady=10)
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=8, state='disabled', wrap='word')
+        self.log_text.pack(fill='x', padx=10, pady=5)
 
-        tk.Button(button_frame, text="Select Quote Folder", command=self.select_quote_folder, width=20,
-                  bg="#4a90e2", fg="white").grid(row=0, column=0, padx=10, pady=5)
-        tk.Button(button_frame, text="Select Output Folder", command=self.select_output_folder, width=20,
-                  bg="#4a90e2", fg="white").grid(row=0, column=1, padx=10, pady=5)
-        tk.Button(button_frame, text="Select Template File", command=self.select_template_file, width=20, bg="#4a90e2", fg="white").grid(row=0, column=2, padx=10, pady=5)
+        container = ttk.Frame(self.root)
+        container.pack(pady=(5, 15), fill='x')
 
-        # --- Action Buttons: Read Quotes, Generate Report ---
-        self.read_quotes_btn = tk.Button(button_frame, text="Read Quotes", command=self.read_quotes, width=20,
-                                         bg="#A9A9A9", fg="white", state='disabled')
+        button_frame = ttk.Frame(container)
+        button_frame.pack()
+
+        ttk.Button(button_frame, text="Select Quote Folder", command=self.select_quote_folder, width=20, bootstyle="primary").grid(row=0, column=0, padx=10, pady=5)
+        ttk.Button(button_frame, text="Select Output Folder", command=self.select_output_folder, width=20, bootstyle="primary").grid(row=0, column=1, padx=10, pady=5)
+        ttk.Button(button_frame, text="Select Template File", command=self.select_template_file, width=20, bootstyle="primary").grid(row=0, column=2, padx=10, pady=5)
+
+        self.read_quotes_btn = ttk.Button(button_frame, text="Read Quotes", command=self.read_quotes, width=20, state='disabled', bootstyle="secondary")
         self.read_quotes_btn.grid(row=1, column=0, padx=10, pady=5)
 
-        self.generate_doc_btn = tk.Button(button_frame, text="Generate Word Doc", command=self.generate_doc, width=20,
-                                          bg="#A9A9A9", fg="white", state='disabled')
+        self.generate_doc_btn = ttk.Button(button_frame, text="Generate Word Doc", command=self.generate_doc, width=20, state='disabled', bootstyle="secondary")
         self.generate_doc_btn.grid(row=1, column=1, padx=10, pady=5)
 
-        self.update_action_buttons()  # Set initial state
+        self.update_action_buttons()
+
 
     def update_action_buttons(self):
         ready = bool(self.quote_folder) and bool(self.output_folder)
         if ready:
-            self.read_quotes_btn.config(state='normal', bg='#3CB371')       # MediumSeaGreen
-            self.generate_doc_btn.config(state='normal', bg='#3CB371')
+            self.read_quotes_btn.config(state='normal', bootstyle='success')
+            self.generate_doc_btn.config(state='normal', bootstyle='success')
         else:
-            self.read_quotes_btn.config(state='disabled', bg='#A9A9A9')    # Grey
-            self.generate_doc_btn.config(state='disabled', bg='#A9A9A9')
+            self.read_quotes_btn.config(state='disabled', bootstyle='secondary')
+            self.generate_doc_btn.config(state='disabled', bootstyle='secondary')
+
 
     def select_template_file(self):
         file_path = filedialog.askopenfilename(
@@ -393,6 +350,6 @@ class QuoteExtractorGUI:
 
 
 if __name__ == '__main__':
-    root = tk.Tk()
+    root = ttk.Window(themename="flatly")
     app = QuoteExtractorGUI(root)
     root.mainloop()
