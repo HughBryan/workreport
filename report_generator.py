@@ -5,6 +5,7 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import json
+from docx.enum.section import WD_ORIENT, WD_SECTION
 
 def load_json(json_path):
     with open(json_path, "r") as f:
@@ -139,11 +140,11 @@ def set_cell_bottom_border(cell, color="357ABD", size="12"):
     borders.append(bottom)
 
 def ensure_landscape_section(doc):
-    section = doc.sections[-1]
-    new_width, new_height = section.page_height, section.page_width
-    section.orientation = 1  # Landscape
-    section.page_width = new_width
-    section.page_height = new_height
+    # Add a new section starting on a new page
+    new_section = doc.add_section(WD_SECTION.NEW_PAGE)
+    new_section.orientation = WD_ORIENT.LANDSCAPE
+    new_section.page_width, new_section.page_height = new_section.page_height, new_section.page_width
+    return new_section
 
 def insert_market_summary_table(doc, quotes, recommended_insurer, broker_fee_pct, commission_pct, associate_split, fixed_broker_fee=0):
     placeholder = "{{market_summary_table}}"
@@ -331,7 +332,146 @@ def insert_conditions_table(doc, quotes):
             parent.insert(idx, tbl._element)
             break
 
-def generate_report(template_path, output_path, data, broker_fee_pct, commission_pct, associate_split, strata_manager, fixed_broker_fee=0):
+
+def insert_invoice_comparison_table(doc, recommended_quote, previous_invoice_data=None):
+    placeholder = "{{invoice_comparison_table}}"
+    ensure_landscape_section(doc)
+
+    row_labels = [
+        "Insurer / Underwriter",
+        "Base Premium",
+        "ESL or FSL",
+        "GST",
+        "Stamp Duty",
+        "Insurer / Underwriter Fee",
+        "Insurer / Underwriter Fee GST",
+        "Broker Fee",
+        "Broker Fee GST",
+        "Total Insurance Premium"
+    ]
+
+    quote_keys = [
+        "insurer",
+        "base",
+        "esl",
+        "gst",
+        "stamp",
+        "underwriter_fee",
+        "underwriter_fee_gst",
+        "broker_fee",
+        "broker_gst",
+        "final_total"
+    ]
+
+    invoice_keys = [
+        "insurer_/_underwriter",
+        "base_premium",
+        "esl",
+        "gst",
+        "stamp_duty",
+        "insurer_/_underwriter_fee",
+        "insurer_/_underwriter_gst",
+        "broker_fee",
+        "broker_fee_gst",
+        "total_premium"
+    ]
+
+    col_headers = ["Itemised Insurance Costs"]
+    if previous_invoice_data:
+        col_headers.append("Last Policy Period")
+    col_headers.append("This Policy Period")
+
+    num_cols = len(col_headers)
+    col_width = Inches(9.0 / num_cols)
+
+    for para in doc.paragraphs:
+        if placeholder in para.text:
+            parent = para._element.getparent()
+            idx = parent.index(para._element)
+            parent.remove(para._element)
+
+            tbl = doc.add_table(rows=1 + len(row_labels), cols=num_cols)
+            tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+            tbl.autofit = True
+
+            # Set headers
+            for col_idx, text in enumerate(col_headers):
+                cell = tbl.cell(0, col_idx)
+                cell.width = col_width
+                cell.text = text
+                set_cell_background(cell, "FFFFFF")
+                set_cell_bottom_border(cell)
+                for p in cell.paragraphs:
+                    p.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    for r in p.runs:
+                        r.font.bold = True
+                        r.font.size = Pt(11)
+                        r.font.name = "Futura Bk BT"
+                        r.font.color.rgb = RGBColor(0, 0, 0)
+
+            # Fill rows
+            for row_idx, label in enumerate(row_labels, 1):
+                color = "e9edf7" if row_idx % 2 == 1 else "FFFFFF"
+                row = tbl.row_cells(row_idx)
+
+                is_last_row = row_idx == len(row_labels)
+
+                # First column: static label
+                row[0].text = label
+                set_cell_background(row[0], color)
+                for p in row[0].paragraphs:
+                    p.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    for r in p.runs:
+                        r.font.bold = True
+                        r.font.size = Pt(9)
+                        r.font.name = "Futura Bk BT"
+
+                col_offset = 1
+
+                # Second column: previous invoice
+                if previous_invoice_data:
+                    key = invoice_keys[row_idx - 1]
+                    val = previous_invoice_data.get(key, "-")
+                    if isinstance(val, (int, float)):
+                        val = format_currency(val)
+                    row[col_offset].text = val or "-"
+                    set_cell_background(row[col_offset], color)
+                    for p in row[col_offset].paragraphs:
+                        p.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                        for r in p.runs:
+                            r.font.size = Pt(9)
+                            r.font.name = "Futura Bk BT"
+                            if is_last_row:
+                                r.font.bold = True
+                    col_offset += 1
+
+                # Third column: recommended quote
+                rec_key = quote_keys[row_idx - 1]
+                val = recommended_quote.get(rec_key, "-")
+                if is_number(val):
+                    val = format_currency(val)
+                row[col_offset].text = val or "-"
+                set_cell_background(row[col_offset], color)
+                for p in row[col_offset].paragraphs:
+                    p.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    for r in p.runs:
+                        r.font.size = Pt(9)
+                        r.font.name = "Futura Bk BT"
+                        if is_last_row:
+                            r.font.bold = True
+
+            if row_idx == len(row_labels):
+                for cell in tbl.row_cells(row_idx - 1):
+                    set_cell_bottom_border(cell)
+
+            parent.insert(idx, tbl._element)
+            break
+
+
+
+
+
+def generate_report(template_path, output_path, data, broker_fee_pct, commission_pct, associate_split, strata_manager, fixed_broker_fee=0, previous_invoice_data=None):
     doc = Document(template_path)
     data["associate_split"] = associate_split
     data["strata_manager"] = strata_manager
@@ -345,6 +485,16 @@ def generate_report(template_path, output_path, data, broker_fee_pct, commission
 
     # Replace in paragraphs
     for para in doc.paragraphs:
+        if "{{expiring_premium}}" in para.text:
+            para.clear()
+            if previous_invoice_data and "total_premium" in previous_invoice_data:
+                val = previous_invoice_data["total_premium"]
+                formatted = format_currency(val)
+                run1 = para.add_run("The expiring premium (exclusive of any adjustments throughout the year) was ")
+                run2 = para.add_run(formatted)
+                run2.bold = True
+
+
         for key, value in replace_dict.items():
             placeholder = f"{{{{{key}}}}}"
             if placeholder in para.text:
@@ -382,4 +532,10 @@ def generate_report(template_path, output_path, data, broker_fee_pct, commission
     insert_comparison_table(doc, data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     insert_conditions_table(doc, data.get("Quotes", {}))
     insert_market_summary_table(doc, data.get("Quotes", {}), recommended.get("insurer"), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
+    insert_invoice_comparison_table(doc, recommended, previous_invoice_data)
+
+
+
+
+    # Save output
     doc.save(output_path)

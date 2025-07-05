@@ -79,6 +79,8 @@ class QuoteExtractorGUI:
         self.broker_split_var = ttk.DoubleVar(value=40.00)
         self.assoc_entry = ttk.Entry(row2, width=7, textvariable=self.associate_split_var, justify='center')
         self.assoc_entry.pack(side='left', padx=(5, 3))
+        self.assoc_entry.bind("<FocusOut>", self.entry_associate_split_update)
+        self.assoc_entry.bind("<Return>", self.entry_associate_split_update)  # optional: allow 
         self.assoc_slider = ttk.Scale(row2, from_=0, to=100, orient='horizontal', variable=self.associate_split_var, length=100)
         self.assoc_slider.config(command=self.slider_associate_split_update)
         self.assoc_slider.pack(side='left', padx=(5, 8))
@@ -97,6 +99,14 @@ class QuoteExtractorGUI:
         self.strata_entry = ttk.Entry(row3, width=30, textvariable=self.strata_manager_var)
         self.strata_entry.pack(side='left', padx=(5, 10))
 
+        # Longitude Quotation Basis
+        row4 = ttk.Frame(default_info_frame)
+        row4.pack(fill='x', pady=5)
+        ttk.Label(row4, text="Longitude Quotation Basis:", width=25, anchor='w').pack(side='left', padx=(0, 5))
+        self.longitude_option_var = ttk.StringVar(value="Current Option")
+        longitude_dropdown = ttk.Combobox(row4, textvariable=self.longitude_option_var, values=["Current Option", "Suggested Option"], state='readonly', width=20)
+        longitude_dropdown.pack(side='left')
+
         # Move log under default_info_frame
         log_frame = ttk.Labelframe(default_info_frame, text="Log")
         log_frame.pack(fill='x', padx=5, pady=(10, 0))
@@ -105,7 +115,8 @@ class QuoteExtractorGUI:
 
         # Right: Previous Invoice Section
         invoice_frame = ttk.Labelframe(config_columns, text="Previous Invoice", padding=10)
-        invoice_frame.grid(row=0, column=1, sticky='n')
+        invoice_frame.grid(row=0, column=1, sticky='n',padx=5)
+        
 
         self.include_invoice_var = ttk.BooleanVar(value=False)
         invoice_check = ttk.Checkbutton(invoice_frame, text="Include last year invoice", variable=self.include_invoice_var, command=self.toggle_invoice_fields)
@@ -185,6 +196,7 @@ class QuoteExtractorGUI:
         self.generate_doc_btn = ttk.Button(button_frame, text="Generate Word Doc", command=self.generate_doc, width=20, state='disabled', bootstyle="secondary")
         self.generate_doc_btn.grid(row=1, column=1, padx=10, pady=5)
 
+
         self.update_action_buttons()
 
     def toggle_invoice_fields(self):
@@ -198,6 +210,21 @@ class QuoteExtractorGUI:
                 var.set("$0.00")
             else:
                 var.set("")
+
+    def extract_invoice_data(self):
+        invoice_data = {}
+        for label, (entry, var, ftype) in self.invoice_fields.items():
+            if ftype == "float":
+                raw = var.get().replace("$", "").replace(",", "")
+                try:
+                    invoice_data[label.lower().replace(" ", "_")] = float(raw)
+                except ValueError:
+                    invoice_data[label.lower().replace(" ", "_")] = 0.0
+            else:
+                invoice_data[label.lower().replace(" ", "_")] = var.get()
+        return invoice_data
+
+
 
     def update_action_buttons(self):
         ready = bool(self.quote_folder) and bool(self.output_folder)
@@ -246,12 +273,21 @@ class QuoteExtractorGUI:
                 template_path = resource_path("report_template.docx")
 
             output_path = os.path.join(self.output_folder, "Clearlake Insurance Renewal Report 2025-2026.docx")
+            
+            invoice_data = self.extract_invoice_data() if self.include_invoice_var.get() else None
 
             generate_report(
-                template_path, output_path, data,
-                broker_fee_pct, commission_pct,
-                associate_split, strata_manager, fixed_broker_fee
+                template_path,
+                output_path,
+                data,
+                broker_fee_pct,
+                commission_pct,
+                associate_split,
+                strata_manager,
+                fixed_broker_fee,
+                previous_invoice_data=invoice_data  
             )
+
             self.log(f"Report generated: {output_path}")
             messagebox.showinfo("Success", f"Report generated:\n{output_path}")
 
@@ -284,9 +320,12 @@ class QuoteExtractorGUI:
             self.broker_entry.insert(0, "100")
             self.broker_entry.config(state='readonly')
 
+
     def slider_associate_split_update(self, val=None):
         try:
-            val = round(float(val))
+            if val is None:
+                val = self.associate_split_var.get()
+            val = round(float(val), 2)
             if val < 0: val = 0
             if val > 100: val = 100
             self.associate_split_var.set(val)
@@ -297,19 +336,20 @@ class QuoteExtractorGUI:
             self.broker_entry.delete(0, tk.END)
             self.broker_entry.insert(0, f"{(100 - val):.2f}")
             self.broker_entry.config(state='readonly')
-        except (ValueError, tk.TclError):
+        except (ValueError, TypeError, tk.TclError):
             pass
 
     def entry_associate_split_update(self, event=None):
         try:
-            val = round(float(self.assoc_entry.get()), 2)
-            if val < 0: val = 0.0
-            if val > 100: val = 100.0
+            val = float(self.assoc_entry.get())
+            val = round(val, 2)
+            if val < 0: val = 0
+            if val > 100: val = 100
         except ValueError:
-            val = 20.0
+            val = 60.0  # fallback default
         self.associate_split_var.set(val)
         self.broker_split_var.set(100 - val)
-        self.slider_associate_split_update()
+        self.slider_associate_split_update(val)
 
     def slider_broker_fee_update(self, val=None):
         try:
