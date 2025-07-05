@@ -88,8 +88,22 @@ Guidelines:
 - IF there is a terrorism levy, add it to base premium
 - Longitude offers a 'current option' and a 'suggested option', use the {longitude_option}
 
+
+
+Rules for Additional and extra benefits:
+- Additional benefits is the same as Extra benefits or additional limits. Additional benefits should NOT include any other features already stated! For example, do not include catastrophe cover, lot owners improvements, loss of rent etc. in this category.
+- "Additional and extra benefits commonly includes: taxation and audit costs, workpalce health and safety breaches, and legal defence expenses. 
+- LIST the dollar value associated with each additional / extract benefit.
+
+Rules for Building Sum Insured:
+- BSI is known as the building sum insured. 
+- It may also just be referred to as building. 
+- If BSI / Building Sum Insured is not in the document, leave it as 0.
+-  Do not get this confused with the liability to others 'sum insured'.
+- If you are reading a 'quote response form', there is a likely chance that you will not have the BSI/building sum insured and should leave BSI 0.
+
+
 Important to know when extracting:
-- BSI is known as the building sum insured. It may also just be referred to as building. It is typically one of the first values. Should be in the hundreds of thousands / millions.
 - For conditions, ignore anything related to time - such as how long the quotation is valid for. 
 - IF GST is included in the underwriter / strata fee, remove gst (by dividing by 1.1) and just return the value without GST. Then put the GST in the underwriter gst section. Remember that computers struggle with floating point. I.e., 423.50 without GST is 385
 - Any additional levies should be included in the ESL.
@@ -97,15 +111,15 @@ Important to know when extracting:
 - Machinary breakdown is often called equipment breakdown
 - Some insurers such as Insurance Investment Solutions will have many excesses. It is important to get every excess. They may have excesses on property, liability, voluntary workers, equipment, office bearers, and government audit and legal expenses
 - Voluntary workers comp is also known as personal accident and is typically $200,000
-- Additional benefits is the same as Extra benefits or additional limits
 - For common contents if its not specified, just say 'Included in BSI'.  
 - Fidelity is also known as: loss of funds, theft of funds.
 - Always use the 'Insurer Alternative value' for all features such as common contents.
 - Public Liability (also known as liability to others) is always 10,20,30,40 or 50 million dollars.
-- "Additional and extra benefits commonly includes: taxation and audit costs, workpalce health and safety breaches, and legal defence expenses. 
-- LIST the dollar value associated with each additional / extract benefit..
+
+
 - YOU MUST list the COST of EVERY additional excess(es)
 - Extract the value listed for “Base Premium” in the main premium breakdown, not any subtotals or split lines.
+- When extracting the strata plan, just remove SP from the start. I.e., SP1234 extracted is 1234
 
 
 - FOR IIS in particular EXTRACT EVERY EXCESS (all the excesses you can expect are below)

@@ -31,7 +31,7 @@ class QuoteExtractorGUI:
         title_label = ttk.Label(
             header_frame,
             text="Clearlake Strata Report Generator",
-            font=("Helvetica", 20, "bold")
+            font=("Andromeda", 20, "bold")
         )
         title_label.pack(pady=(5, 2))
 
@@ -367,6 +367,6 @@ class QuoteExtractorGUI:
 
 
 if __name__ == '__main__':
-    root = ttk.Window(themename="flatly")
+    root = ttk.Window(themename="yeti")
     app = QuoteExtractorGUI(root)
     root.mainloop()
