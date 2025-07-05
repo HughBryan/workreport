@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import os
-from extract import process_folder
-from report_generator import load_json, generate_report, resource_path
+from extract import process_folder, resource_path
+from report_generator import load_json, generate_report
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 

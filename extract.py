@@ -8,7 +8,19 @@ import sys
 from datetime import datetime
 from openai import AzureOpenAI  
 
-load_dotenv()
+def resource_path(relative_path):
+
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+load_dotenv(dotenv_path=resource_path(".env"))
 
 # --- Azure OpenAI Credentials ---
 azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -24,16 +36,7 @@ openai = AzureOpenAI(
 )
 
 
-def resource_path(relative_path):
 
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
 
 
 with open(resource_path("main_schema.json")) as f:

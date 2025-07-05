@@ -5,7 +5,6 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import json
-from extract import resource_path
 
 def load_json(json_path):
     with open(json_path, "r") as f:
@@ -337,16 +336,47 @@ def generate_report(template_path, output_path, data, broker_fee_pct, commission
     data["associate_split"] = associate_split
     data["strata_manager"] = strata_manager
     replace_dict = flatten_data_for_replace(data, broker_fee_pct, commission_pct, strata_manager, fixed_broker_fee)
-    for p in doc.paragraphs:
+
+    bold_keys = {
+        "recommended.insurer",
+        "recommended.final_total",
+        "recommended.remuneration"
+    }
+
+    # Replace in paragraphs
+    for para in doc.paragraphs:
         for key, value in replace_dict.items():
-            if f"{{{{{key}}}}}" in p.text:
-                p.text = p.text.replace(f"{{{{{key}}}}}", str(value))
+            placeholder = f"{{{{{key}}}}}"
+            if placeholder in para.text:
+                # Save existing text
+                text_parts = para.text.split(placeholder)
+                para.clear()
+                run = para.add_run(text_parts[0])
+                run.bold = False
+
+                # Insert bold value if it's in the bold_keys set
+                bold_run = para.add_run(str(value))
+                bold_run.bold = key in bold_keys
+
+                run2 = para.add_run(text_parts[1])
+                run2.bold = False
+
+    # Replace in tables
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for key, value in replace_dict.items():
-                    if f"{{{{{key}}}}}" in cell.text:
-                        cell.text = cell.text.replace(f"{{{{{key}}}}}", str(value))
+                    placeholder = f"{{{{{key}}}}}"
+                    if placeholder in cell.text:
+                        for para in cell.paragraphs:
+                            if placeholder in para.text:
+                                parts = para.text.split(placeholder)
+                                para.clear()
+                                para.add_run(parts[0])
+                                bold_run = para.add_run(str(value))
+                                bold_run.bold = key in bold_keys
+                                para.add_run(parts[1] if len(parts) > 1 else "")
+
     enriched_quotes = enrich_insurer_quotes(data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     recommended = find_recommended(enriched_quotes)
     insert_comparison_table(doc, data.get("Quotes", {}), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
