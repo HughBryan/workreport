@@ -6,6 +6,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import json
 from docx.enum.section import WD_ORIENT, WD_SECTION
+from docx.shared import Pt, RGBColor
 
 def load_json(json_path):
     with open(json_path, "r") as f:
@@ -467,8 +468,52 @@ def insert_invoice_comparison_table(doc, recommended_quote, previous_invoice_dat
             parent.insert(idx, tbl._element)
             break
 
+from docx.shared import Pt
+from docx.shared import Pt, RGBColor
 
+def insert_disclosure_section(doc, strata_manager):
+    placeholder = "{{Disclosure}}"
 
+    # If strata_manager is missing or blank, just clear the placeholder
+    if not strata_manager:
+        for para in doc.paragraphs:
+            if placeholder in para.text:
+                para.text = ""
+        return
+
+    disclosure_heading = "DISCLOSURE OF COMMERCIAL AGREEMENT"
+    disclosure_paragraphs = [
+        "[The broking services outlined in this report are provided by:",
+        "Clearlake Insurance Brokers ACN 651 113 861.",
+        f"Clearlake Insurance Brokers and {strata_manager} have a referral relationship/distribution relationship. Both parties may receive income as a result of placing your annual insurance and providing ongoing support. The full details of the remuneration payable are detailed in the *Itemised Insurance Costs* section of this document.]"
+    ]
+
+    for para in doc.paragraphs:
+        if placeholder in para.text:
+            parent = para._element.getparent()
+            idx = parent.index(para._element)
+            parent.remove(para._element)
+
+            # Title paragraph (blue)
+            title_para = doc.add_paragraph()
+            run = title_para.add_run(disclosure_heading)
+            run.bold = True
+            run.font.size = Pt(12)
+            run.font.name = "Futura Bk BT"
+            run.font.color.rgb = RGBColor(0, 112, 192)
+
+            # Body paragraphs
+            for text in disclosure_paragraphs:
+                p = doc.add_paragraph()
+                run = p.add_run(text)
+                run.font.size = Pt(11)
+                run.font.name = "Futura Bk BT (Body)"
+
+            # Insert into correct location
+            parent.insert(idx, title_para._element)
+            for i in range(len(disclosure_paragraphs)):
+                parent.insert(idx + i + 1, doc.paragraphs[-(len(disclosure_paragraphs) - i)]._element)
+            break
 
 
 def generate_report(template_path, output_path, data, broker_fee_pct, commission_pct, associate_split, strata_manager, fixed_broker_fee=0, previous_invoice_data=None):
@@ -533,7 +578,7 @@ def generate_report(template_path, output_path, data, broker_fee_pct, commission
     insert_conditions_table(doc, data.get("Quotes", {}))
     insert_market_summary_table(doc, data.get("Quotes", {}), recommended.get("insurer"), broker_fee_pct, commission_pct, associate_split, fixed_broker_fee)
     insert_invoice_comparison_table(doc, recommended, previous_invoice_data)
-
+    insert_disclosure_section(doc,strata_manager)
 
 
 
