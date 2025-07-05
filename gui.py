@@ -135,7 +135,40 @@ class QuoteExtractorGUI:
                 var.set("0.00")
             entry = ttk.Entry(frame, textvariable=var, justify='right', state='disabled')
             entry.pack(side='left', fill='x', expand=True)
+            if ftype == "float":
+                var.set("$0.00")
+
+                def create_validate_callback(entry=entry, var=var):
+                    def validate(P):
+                        import re
+                        # Only allow up to 2 decimals, no $, no commas
+                        return re.fullmatch(r"^\d*\.?\d{0,2}$", P) is not None or P == ""
+
+                    def on_focus_in(event):
+                        # Remove formatting (e.g., $ and commas)
+                        raw = var.get().replace("$", "").replace(",", "")
+                        var.set(raw)
+
+                    def on_focus_out(event):
+                        raw = var.get().replace(",", "").replace("$", "")
+                        try:
+                            number = float(raw)
+                            var.set("${:,.2f}".format(number))
+                        except ValueError:
+                            var.set("$0.00")
+
+                    vcmd = (self.root.register(validate), '%P')
+                    entry.config(validate='key', validatecommand=vcmd)
+                    entry.bind("<FocusOut>", on_focus_out)
+                    entry.bind("<FocusIn>", on_focus_in)
+
+                create_validate_callback()
+
             self.invoice_fields[label] = (entry, var, ftype)
+
+            # Add Clear All button at the bottom of the Previous Invoice section
+        clear_btn = ttk.Button(invoice_frame, text="Clear All", command=self.clear_invoice_fields)
+        clear_btn.pack(pady=(10, 0), anchor='e')
 
         container = ttk.Frame(self.root)
         container.pack(pady=(5, 15), fill='x')
@@ -159,9 +192,12 @@ class QuoteExtractorGUI:
         for entry, _, _ in self.invoice_fields.values():
             entry.config(state=state)
 
-    # Other methods: slider_commission_update, slider_broker_fee_update, slider_associate_split_update, toggle_fixed_fee, generate_doc,
-    # update_action_buttons, log, select_quote_folder, select_output_folder, read_quotes, etc. remain unchanged from original file.
-
+    def clear_invoice_fields(self):
+        for label, (entry, var, ftype) in self.invoice_fields.items():
+            if ftype == "float":
+                var.set("$0.00")
+            else:
+                var.set("")
 
     def update_action_buttons(self):
         ready = bool(self.quote_folder) and bool(self.output_folder)
