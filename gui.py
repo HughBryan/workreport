@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import os
 from extract import process_folder, resource_path
-from report_generator import load_json, generate_report
+from report_generator import load_json, generate_report, format_currency
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 
@@ -24,16 +24,8 @@ class QuoteExtractorGUI:
         self.setup_ui()
 
     def setup_ui(self):
-        # Header Frame
         header_frame = ttk.Labelframe(self.root, text="", padding=10)
         header_frame.pack(fill='x', padx=10, pady=(15, 10))
-
-        title_label = ttk.Label(
-            header_frame,
-            text="Clearlake Strata Report Generator",
-            font=("Andromeda", 20, "bold")
-        )
-        title_label.pack(pady=(5, 2))
 
         ttk.Separator(header_frame, orient='horizontal').pack(fill='x', pady=(0, 5))
 
@@ -46,10 +38,17 @@ class QuoteExtractorGUI:
         config_frame = ttk.Labelframe(self.root, text="Pricing Configuration")
         config_frame.pack(padx=10, pady=(10, 5), fill='x')
 
-        row1 = ttk.Frame(config_frame)
+        config_columns = ttk.Frame(config_frame)
+        config_columns.pack(fill='x', padx=10)
+
+        # Left: Default Information
+        default_info_frame = ttk.Labelframe(config_columns, text="Default Information", padding=10)
+        default_info_frame.grid(row=0, column=0, sticky='n')
+
+        row1 = ttk.Frame(default_info_frame)
         row1.pack(fill='x', pady=5)
 
-        ttk.Label(row1, text="Commission (%):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(row1, text="Commission (%):", width=18, anchor='w').grid(row=0, column=0, padx=5, pady=2, sticky="w")
         self.commission_var = ttk.DoubleVar(value=self.commission)
         self.comm_entry = ttk.Entry(row1, width=5, textvariable=self.commission_var, justify='center')
         self.comm_entry.grid(row=0, column=1, padx=5)
@@ -57,7 +56,7 @@ class QuoteExtractorGUI:
         self.comm_slider.config(command=self.slider_commission_update)
         self.comm_slider.grid(row=0, column=2, padx=5)
 
-        ttk.Label(row1, text="Broker Fee (%):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(row1, text="Broker Fee (%):", width=18, anchor='w').grid(row=1, column=0, padx=5, pady=2, sticky="w")
         self.broker_fee_var = ttk.DoubleVar(value=self.broker_fee)
         self.fee_entry = ttk.Entry(row1, width=5, textvariable=self.broker_fee_var, justify='center')
         self.fee_entry.grid(row=1, column=1, padx=5)
@@ -73,27 +72,23 @@ class QuoteExtractorGUI:
         self.fixed_fee_entry = ttk.Entry(row1, width=7, textvariable=self.fixed_fee_var, justify='center', state='disabled')
         self.fixed_fee_entry.grid(row=1, column=4, padx=5)
 
-        row2 = ttk.Frame(config_frame)
+        row2 = ttk.Frame(default_info_frame)
         row2.pack(fill='x', pady=5)
-
-        ttk.Label(row2, text="Associate Split (%):").pack(side='left')
+        ttk.Label(row2, text="Associate Split (%):", width=18, anchor='w').pack(side='left')
         self.associate_split_var = ttk.DoubleVar(value=60.00)
         self.broker_split_var = ttk.DoubleVar(value=40.00)
-
         self.assoc_entry = ttk.Entry(row2, width=7, textvariable=self.associate_split_var, justify='center')
         self.assoc_entry.pack(side='left', padx=(5, 3))
         self.assoc_slider = ttk.Scale(row2, from_=0, to=100, orient='horizontal', variable=self.associate_split_var, length=100)
         self.assoc_slider.config(command=self.slider_associate_split_update)
         self.assoc_slider.pack(side='left', padx=(5, 8))
-
         self.broker_entry = ttk.Entry(row2, width=7, justify='center')
         self.broker_entry.pack(side='left', padx=(3, 5))
         self.broker_entry.insert(0, "40.00")
         self.broker_entry.config(state='readonly')
-
         ttk.Label(row2, text=": Broker Share (%)").pack(side='left')
 
-        row3 = ttk.Frame(config_frame)
+        row3 = ttk.Frame(default_info_frame)
         row3.pack(fill='x', pady=5)
         self.strata_checkbox_var = ttk.BooleanVar(value=True)
         self.strata_checkbox = ttk.Checkbutton(row3, text="Strata Manager:", variable=self.strata_checkbox_var)
@@ -102,23 +97,48 @@ class QuoteExtractorGUI:
         self.strata_entry = ttk.Entry(row3, width=30, textvariable=self.strata_manager_var)
         self.strata_entry.pack(side='left', padx=(5, 10))
 
-        row4 = ttk.Frame(config_frame)
-        row4.pack(fill='x', pady=5)
-        self.longitude_option_var = ttk.StringVar(value="current")
-        ttk.Label(row4, text="Longitude Quotation Basis:").pack(side='left', padx=(0, 8))
-        ttk.Radiobutton(row4, text="Current Option", variable=self.longitude_option_var, value="current").pack(side='left')
-        ttk.Radiobutton(row4, text="Suggested Option", variable=self.longitude_option_var, value="suggested").pack(side='left', padx=(10, 0))
-
-        # Add log section with title
-        log_frame = ttk.Labelframe(self.root, text="Log")
-        log_frame.pack(padx=10, pady=(10, 0), fill='both', expand=False)
-
+        # Move log under default_info_frame
+        log_frame = ttk.Labelframe(default_info_frame, text="Log")
+        log_frame.pack(fill='x', padx=5, pady=(10, 0))
         self.log_text = scrolledtext.ScrolledText(log_frame, height=8, state='disabled', wrap='word')
-        self.log_text.pack(fill='x', padx=10, pady=5)
+        self.log_text.pack(fill='both', padx=5, pady=5)
+
+        # Right: Previous Invoice Section
+        invoice_frame = ttk.Labelframe(config_columns, text="Previous Invoice", padding=10)
+        invoice_frame.grid(row=0, column=1, sticky='n')
+
+        self.include_invoice_var = ttk.BooleanVar(value=False)
+        invoice_check = ttk.Checkbutton(invoice_frame, text="Include last year invoice", variable=self.include_invoice_var, command=self.toggle_invoice_fields)
+        invoice_check.pack(anchor='w', pady=(0, 5))
+
+        self.invoice_fields = {}
+        fields = [
+            ("Insurer / Underwriter", "str"),
+            ("Base Premium", "float"),
+            ("ESL", "float"),
+            ("GST", "float"),
+            ("Stamp Duty", "float"),
+            ("Insurer / underwriter fee", "float"),
+            ("Insurer / underwriter GST", "float"),
+            ("Broker Fee", "float"),
+            ("Broker Fee GST", "float"),
+            ("Total Premium", "float"),
+        ]
+
+        for i, (label, ftype) in enumerate(fields):
+            frame = ttk.Frame(invoice_frame)
+            frame.pack(fill='x', pady=2)
+            label_widget = ttk.Label(frame, text=label + ":", width=25, anchor='e')
+            label_widget.pack(side='left', padx=(0, 5))
+            var = tk.StringVar()
+            if ftype == "float":
+                var.set("0.00")
+            entry = ttk.Entry(frame, textvariable=var, justify='right', state='disabled')
+            entry.pack(side='left', fill='x', expand=True)
+            self.invoice_fields[label] = (entry, var, ftype)
 
         container = ttk.Frame(self.root)
         container.pack(pady=(5, 15), fill='x')
-
         button_frame = ttk.Frame(container)
         button_frame.pack()
 
@@ -133,6 +153,14 @@ class QuoteExtractorGUI:
         self.generate_doc_btn.grid(row=1, column=1, padx=10, pady=5)
 
         self.update_action_buttons()
+
+    def toggle_invoice_fields(self):
+        state = 'normal' if self.include_invoice_var.get() else 'disabled'
+        for entry, _, _ in self.invoice_fields.values():
+            entry.config(state=state)
+
+    # Other methods: slider_commission_update, slider_broker_fee_update, slider_associate_split_update, toggle_fixed_fee, generate_doc,
+    # update_action_buttons, log, select_quote_folder, select_output_folder, read_quotes, etc. remain unchanged from original file.
 
 
     def update_action_buttons(self):
